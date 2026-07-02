@@ -9,9 +9,19 @@ dependencies = [
     "python-multipart==0.0.20",
     "pydantic-settings==2.7.1",
     "pikepdf==9.5.2",
+    "aio-pika==9.6.2",
 ]
 
 # No [build-system]: this is an application, not a distributable package, so uv
 # installs only the dependencies and we run uvicorn against the app/ directory.
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.4",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

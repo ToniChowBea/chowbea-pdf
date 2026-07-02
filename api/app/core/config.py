@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     # Reject uploads larger than this (in megabytes) to protect the server.
     max_upload_mb: int = 200
 
+    # AMQP URL of the RabbitMQ broker that carries the job queue.
+    rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
+
+    # Finished job results are kept this long before being swept from disk.
+    result_ttl_minutes: int = 30
+
+    # How many jobs may be processed at the same time (RabbitMQ prefetch count).
+    job_concurrency: int = 3
+
     model_config = SettingsConfigDict(env_file=".env", env_prefix="CHOWBEA_")
 
     @property
