@@ -95,3 +95,24 @@ def test_redelivered_job_is_not_rerun(tmp_path):
     asyncio.run(execute_job(registry, record.id))
     assert record.status is JobStatus.processing
     assert record.finished_at is None
+
+
+def test_merge_job_succeeds(tmp_path):
+    registry = JobRegistry()
+    workspace = tmp_path / "job"
+    workspace.mkdir()
+    write_blank_pdf(workspace / "input-0.pdf")
+    write_blank_pdf(workspace / "input-1.pdf")
+    record = registry.create(
+        tool="merge",
+        workspace=workspace,
+        file_count=2,
+        total_bytes=sum((workspace / f"input-{i}.pdf").stat().st_size for i in range(2)),
+        params={"names": ["a.pdf", "b.pdf"]},
+    )
+    asyncio.run(execute_job(registry, record.id))
+    assert record.status is JobStatus.done
+    assert record.error is None
+    assert record.result_path is not None and record.result_path.exists()
+    assert record.download_name == "merged.pdf"
+    assert record.media_type == "application/pdf"

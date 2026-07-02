@@ -31,6 +31,7 @@ from app.services.unlock import (
     UnlockError,
     unlock_pdf_file,
 )
+from app.services.merge import MergeError, merge_pdf_files
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ _KNOWN_ERRORS = (
     IncorrectPasswordError,
     NotEncryptedError,
     UnlockError,
+    MergeError,
 )
 
 
@@ -107,7 +109,17 @@ def _run_unlock(record: JobRecord) -> None:
     record.media_type = "application/pdf"
 
 
-_RUNNERS = {"compress": _run_compress, "lock": _run_lock, "unlock": _run_unlock}
+def _run_merge(record: JobRecord) -> None:
+    names: list[str] = record.params["names"]
+    input_paths = [record.workspace / f"input-{index}.pdf" for index in range(len(names))]
+    output_path = record.workspace / "output.pdf"
+    merge_pdf_files(input_paths, names, output_path)
+    record.result_path = output_path
+    record.download_name = "merged.pdf"
+    record.media_type = "application/pdf"
+
+
+_RUNNERS = {"compress": _run_compress, "lock": _run_lock, "unlock": _run_unlock, "merge": _run_merge}
 
 
 def run_job(record: JobRecord) -> None:
