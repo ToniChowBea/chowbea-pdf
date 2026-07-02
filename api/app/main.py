@@ -37,7 +37,11 @@ async def _run_queue(job_queue: JobQueue, registry: JobRegistry) -> None:
 async def _sweep_forever(registry: JobRegistry) -> None:
     while True:
         await asyncio.sleep(60)
-        removed = registry.sweep()
+        try:
+            removed = registry.sweep()
+        except Exception:
+            logger.exception("Job sweep failed; will retry next cycle")
+            continue
         if removed:
             logger.info("Swept %d expired job(s)", removed)
 
@@ -55,6 +59,7 @@ async def lifespan(app: FastAPI):
     finally:
         queue_task.cancel()
         sweep_task.cancel()
+        await asyncio.gather(queue_task, sweep_task, return_exceptions=True)
         await job_queue.close()
 
 
