@@ -67,8 +67,18 @@ async def lifespan(app: FastAPI):
 
 
 # The OpenAPI document produced here is consumed by the web app's `chowbea-axios`
-# codegen to generate a fully typed client.
-app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
+# codegen to generate a fully typed client. The version carries the deployed
+# commit so /docs identifies the running build; locally it stays stable so the
+# codegen watcher doesn't churn.
+app = FastAPI(
+    title=settings.app_name,
+    version=(
+        settings.app_version
+        if settings.commit_sha == "dev"
+        else f"{settings.app_version}+{settings.commit_sha[:7]}"
+    ),
+    lifespan=lifespan,
+)
 
 # Allow the browser-based frontend to call the API during development and in prod.
 app.add_middleware(
@@ -86,5 +96,6 @@ app.include_router(jobs.router)
 
 @app.get("/health", tags=["meta"], summary="Liveness check")
 def health() -> dict[str, str]:
-    """Return a simple status payload used by load balancers and uptime checks."""
-    return {"status": "ok"}
+    """Return a status payload used by load balancers, uptime checks, and
+    bug reports (the commit identifies the running deploy)."""
+    return {"status": "ok", "commit": settings.commit_sha[:7]}

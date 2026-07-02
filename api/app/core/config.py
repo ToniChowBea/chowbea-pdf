@@ -1,5 +1,6 @@
 """Application configuration loaded from the environment."""
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +29,10 @@ class Settings(BaseSettings):
 
     # How many jobs may be processed at the same time (RabbitMQ prefetch count).
     job_concurrency: int = 3
+
+    # Git SHA of the running deploy; Railway injects this on git-connected
+    # deploys. Read without the CHOWBEA_ prefix, hence the explicit alias.
+    commit_sha: str = Field(default="dev", validation_alias="RAILWAY_GIT_COMMIT_SHA")
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="CHOWBEA_")
 
