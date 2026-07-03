@@ -373,6 +373,8 @@ export interface components {
         QueueBoard: {
             /** Concurrency */
             concurrency: number;
+            /** Jobs Completed */
+            jobs_completed: number;
             /** Processing */
             processing: components["schemas"]["BoardEntry"][];
             /** Waiting */
