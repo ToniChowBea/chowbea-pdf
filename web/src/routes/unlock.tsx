@@ -16,6 +16,7 @@ import { Progress } from "@/components/ui/progress"
 import { Dropzone } from "@/components/dropzone"
 import { FileCard } from "@/components/file-card"
 import { ToolHeader } from "@/components/tool-header"
+import { isPdfFile } from "@/lib/supported-files"
 import { useUnlockStore } from "@/stores/unlock"
 import { useHandoffStore } from "@/stores/handoff"
 import {
@@ -54,7 +55,7 @@ function UnlockPage() {
   React.useEffect(() => {
     const state = useUnlockStore.getState()
     if (state.file !== null || state.status !== "idle") return
-    const pending = useHandoffStore.getState().take()
+    const pending = useHandoffStore.getState().takeMatching(isPdfFile, 1)
     if (pending.length > 0) pickFile(pending)
     // Intentionally mount-only.
     // eslint-disable-next-line react-hooks/exhaustive-deps

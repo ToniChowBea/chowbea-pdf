@@ -10,3 +10,8 @@ export function isSupportedFile(file: File): boolean {
   const ext = file.name.toLowerCase().split(".").pop() ?? ""
   return SUPPORTED_EXTENSIONS.includes(ext)
 }
+
+/** True for the PDF files that five of the six tools exclusively accept. */
+export function isPdfFile(file: File): boolean {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+}

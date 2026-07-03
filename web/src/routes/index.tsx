@@ -144,6 +144,18 @@ function Home() {
   const hasFileDrag = (event: React.DragEvent) =>
     Array.from(event.dataTransfer.types).includes("Files")
 
+  // A drag can end without a paired dragleave at this root (released outside
+  // the window, focus loss). Reset the counter on any global drag end/drop.
+  React.useEffect(() => {
+    const reset = () => setDragDepth(0)
+    window.addEventListener("dragend", reset)
+    window.addEventListener("drop", reset)
+    return () => {
+      window.removeEventListener("dragend", reset)
+      window.removeEventListener("drop", reset)
+    }
+  }, [])
+
   const totalSize = pending.reduce((sum, file) => sum + file.size, 0)
 
   return (

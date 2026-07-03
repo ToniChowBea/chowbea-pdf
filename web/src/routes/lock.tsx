@@ -16,6 +16,7 @@ import { ToggleSwitch } from "@/components/ui/toggle-switch"
 import { Dropzone } from "@/components/dropzone"
 import { FileCard } from "@/components/file-card"
 import { ToolHeader } from "@/components/tool-header"
+import { isPdfFile } from "@/lib/supported-files"
 import { cn } from "@/lib/utils"
 import { useLockStore } from "@/stores/lock"
 import { useHandoffStore } from "@/stores/handoff"
@@ -135,7 +136,7 @@ function LockPage() {
   React.useEffect(() => {
     const state = useLockStore.getState()
     if (state.file !== null || state.status !== "idle") return
-    const pending = useHandoffStore.getState().take()
+    const pending = useHandoffStore.getState().takeMatching(isPdfFile, 1)
     if (pending.length > 0) pickFile(pending)
     // Intentionally mount-only.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Dropzone } from "@/components/dropzone"
 import { ToolHeader } from "@/components/tool-header"
+import { isPdfFile } from "@/lib/supported-files"
 import { cn } from "@/lib/utils"
 import { type PageCard, useRotateStore } from "@/stores/rotate"
 import { useHandoffStore } from "@/stores/handoff"
@@ -215,7 +216,7 @@ function RotatePage() {
   React.useEffect(() => {
     const state = useRotateStore.getState()
     if (state.file !== null || state.cards.length > 0 || state.status !== "idle") return
-    const pending = useHandoffStore.getState().take()
+    const pending = useHandoffStore.getState().takeMatching(isPdfFile, 1)
     if (pending.length > 0) loadFile(pending)
     // Intentionally mount-only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
