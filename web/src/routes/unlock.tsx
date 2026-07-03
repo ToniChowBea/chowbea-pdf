@@ -16,9 +16,9 @@ import { Progress } from "@/components/ui/progress"
 import { Dropzone } from "@/components/dropzone"
 import { FileCard } from "@/components/file-card"
 import { ToolHeader } from "@/components/tool-header"
+import { useUnlockStore } from "@/stores/unlock"
 import {
   type CompressionProgress,
-  type UnlockResult,
   downloadBlob,
   formatBytes,
   unlockPdf,
@@ -33,16 +33,8 @@ const PHASE_LABELS: Record<CompressionProgress["phase"], string> = {
   downloading: "Downloading",
 }
 
-type Status = "idle" | "loading" | "success" | "error"
-
 function UnlockPage() {
-  const [file, setFile] = React.useState<File | null>(null)
-  const [password, setPassword] = React.useState("")
-  const [showPassword, setShowPassword] = React.useState(false)
-  const [status, setStatus] = React.useState<Status>("idle")
-  const [result, setResult] = React.useState<UnlockResult | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
-  const [progress, setProgress] = React.useState<CompressionProgress | null>(null)
+  const { file, password, showPassword, status, result, error, progress } = useUnlockStore()
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   // Keep only the first PDF picked — unlock works on a single file at a time.
@@ -52,27 +44,31 @@ function UnlockPage() {
       (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
     )
     if (!pdf) return
-    setFile(pdf)
-    setStatus("idle")
-    setResult(null)
-    setError(null)
+    useUnlockStore.setState({ file: pdf, status: "idle", result: null, error: null })
   }, [])
 
   const handleUnlock = async () => {
     if (!file || password.length === 0) return
-    setStatus("loading")
-    setError(null)
-    setResult(null)
-    setProgress({ phase: "uploading", percent: 0 })
+    useUnlockStore.setState({
+      status: "loading",
+      error: null,
+      result: null,
+      progress: { phase: "uploading", percent: 0 },
+    })
     try {
-      const unlocked = await unlockPdf(file, password, setProgress)
-      setResult(unlocked)
-      setStatus("success")
+      const current = useUnlockStore.getState()
+      if (!current.file) return
+      const unlocked = await unlockPdf(current.file, current.password, (p) =>
+        useUnlockStore.setState({ progress: p }),
+      )
+      useUnlockStore.setState({ result: unlocked, status: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.")
-      setStatus("error")
+      useUnlockStore.setState({
+        error: err instanceof Error ? err.message : "Something went wrong.",
+        status: "error",
+      })
     } finally {
-      setProgress(null)
+      useUnlockStore.setState({ progress: null })
     }
   }
 
@@ -109,9 +105,7 @@ function UnlockPage() {
             meta={`${formatBytes(file.size)} · Locked`}
             locked
             onReplace={() => {
-              setFile(null)
-              setStatus("idle")
-              setResult(null)
+              useUnlockStore.setState({ file: null, status: "idle", result: null })
             }}
           />
         )}
@@ -131,7 +125,7 @@ function UnlockPage() {
             <input
               type={showPassword ? "text" : "password"}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => useUnlockStore.setState({ password: event.target.value })}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && canSubmit) handleUnlock()
               }}
@@ -142,7 +136,7 @@ function UnlockPage() {
             <button
               type="button"
               aria-label={showPassword ? "Hide password" : "Show password"}
-              onClick={() => setShowPassword((v) => !v)}
+              onClick={() => useUnlockStore.setState((state) => ({ showPassword: !state.showPassword }))}
               className="flex shrink-0 items-center justify-center text-ink"
             >
               <HugeiconsIcon icon={showPassword ? ViewOffIcon : ViewIcon} className="size-5" strokeWidth={2.2} />
