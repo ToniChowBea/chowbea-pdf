@@ -197,8 +197,8 @@ function Home() {
           </span>
         </h1>
 
-        <div className="flex max-w-[330px] flex-col items-start gap-4">
-          <p className="text-[17px] font-semibold leading-snug text-subtext">
+        <div className="flex max-w-[330px] flex-col items-start gap-4 lg:items-end">
+          <p className="text-[17px] font-semibold leading-snug text-subtext lg:text-right">
             {pending.length > 0
               ? `${pending.length} file${pending.length > 1 ? "s" : ""} ready — pick a tool below.`
               : "Click Upload PDF or drag and drop files anywhere to get started."}
