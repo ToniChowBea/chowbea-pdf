@@ -9,13 +9,17 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ghostscript \
-        pandoc \
         libreoffice-writer \
         libpango-1.0-0 \
         libpangocairo-1.0-0 \
         libgdk-pixbuf-2.0-0 \
         fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
+
+# Official pandoc release: built with embedded data files, so `--sandbox`
+# (which blocks filesystem data-dir reads) still lets the docx writer work.
+ADD https://github.com/jgm/pandoc/releases/download/3.6.3/pandoc-3.6.3-1-amd64.deb /tmp/pandoc.deb
+RUN dpkg -i /tmp/pandoc.deb && rm /tmp/pandoc.deb
 
 WORKDIR /app
 

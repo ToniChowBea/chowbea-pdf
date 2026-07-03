@@ -16,7 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pandoc libreoffice-writer ghostscript libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 fonts-liberation
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-writer ghostscript libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 fonts-liberation
+      - run: curl -sSL -o /tmp/pandoc.deb https://github.com/jgm/pandoc/releases/download/3.6.3/pandoc-3.6.3-1-amd64.deb && sudo dpkg -i /tmp/pandoc.deb
       - run: uv sync --locked
       - run: uv run pytest
 

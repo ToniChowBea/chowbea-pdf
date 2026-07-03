@@ -10,6 +10,7 @@ missing engine fails the individual job, never the process.
 from __future__ import annotations
 
 import html as html_module
+import logging
 import os
 import shutil
 import signal
@@ -20,6 +21,8 @@ from pathlib import Path
 from typing import Callable
 
 import pikepdf
+
+logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 180
 
@@ -88,7 +91,7 @@ def _run(cmd: list[str], name: str) -> None:
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
             # Own session so a timeout can kill the whole process tree
             # (LibreOffice's soffice wrapper spawns soffice.bin).
             start_new_session=True,
@@ -96,14 +99,18 @@ def _run(cmd: list[str], name: str) -> None:
     except OSError as exc:
         raise ConvertError(f"'{name}' could not be converted.") from exc
     try:
-        returncode = process.wait(timeout=_TIMEOUT_SECONDS)
+        _, stderr = process.communicate(timeout=_TIMEOUT_SECONDS)
+        returncode = process.returncode
     except subprocess.TimeoutExpired:
         try:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
         except ProcessLookupError:
             pass
-        process.wait()
+        process.communicate()
         raise ConvertError(f"'{name}' took too long to convert.") from None
+    if returncode != 0:
+        tail = (stderr or b"")[-500:].decode("utf-8", errors="replace")
+        logger.warning("Conversion engine failed (exit %d): %s", returncode, tail)
     if returncode == 3:
         raise ConvertError(f"'{name}' could not be converted (engine unavailable).")
     if returncode != 0:
