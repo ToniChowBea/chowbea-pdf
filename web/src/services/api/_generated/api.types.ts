@@ -99,6 +99,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pdf/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a file conversion
+         * @description Validate the upload(s) and conversion pair, then queue a convert job.
+         */
+        post: operations["convert_pdf_convert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -203,6 +223,24 @@ export interface components {
              * @default ebook
              */
             quality: components["schemas"]["CompressionQuality"];
+        };
+        /** Body_convert_pdf_convert_post */
+        Body_convert_pdf_convert_post: {
+            /**
+             * Files
+             * @description The file to convert (multiple images may combine into one PDF).
+             */
+            files: string[];
+            /**
+             * Target
+             * @description Target format: pdf, docx, md, html, txt, png, or jpeg.
+             */
+            target: string;
+            /**
+             * Dpi
+             * @description Resolution for png/jpeg targets: 72, 150, or 300.
+             */
+            dpi?: number | null;
         };
         /** Body_lock_pdf_lock_post */
         Body_lock_pdf_lock_post: {
@@ -500,6 +538,39 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_rotate_pdf_rotate_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    convert_pdf_convert_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_convert_pdf_convert_post"];
             };
         };
         responses: {

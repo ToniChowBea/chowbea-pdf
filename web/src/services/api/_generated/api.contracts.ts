@@ -35,6 +35,18 @@ export interface Body_compress_pdf_compress_post {
 }
 
 /**
+ * Schema: Body_convert_pdf_convert_post
+ */
+export interface Body_convert_pdf_convert_post {
+	/** The file to convert (multiple images may combine into one PDF). */
+	files: (File | Blob)[];
+	/** Target format: pdf, docx, md, html, txt, png, or jpeg. */
+	target: string;
+	/** Resolution for png/jpeg targets: 72, 150, or 300. */
+	dpi?: number | null;
+}
+
+/**
  * Schema: Body_lock_pdf_lock_post
  */
 export interface Body_lock_pdf_lock_post {
@@ -264,6 +276,25 @@ export type Rotate_pdf_rotate_postResponse422 = {
 /** Response: POST /pdf/rotate (happy path) */
 export type Rotate_pdf_rotate_postResponse = Rotate_pdf_rotate_postResponse202;
 
+/** Response: POST /pdf/convert (202 - Successful Response) */
+export type Convert_pdf_convert_postResponse202 = {
+	job_id: string;
+	position: number | null;
+	queue_size: number;
+};
+
+/** Response: POST /pdf/convert (422 - Validation Error) */
+export type Convert_pdf_convert_postResponse422 = {
+	detail?: ({
+		loc: (string | number)[];
+		msg: string;
+		type: string;
+	})[];
+};
+
+/** Response: POST /pdf/convert (happy path) */
+export type Convert_pdf_convert_postResponse = Convert_pdf_convert_postResponse202;
+
 /** Response: GET /jobs/{job_id} (200 - Successful Response) */
 export type Job_status_jobs__job_id__getResponse200 = {
 	id: string;
@@ -380,6 +411,16 @@ export type Rotate_pdf_rotate_postBody = {
 	file: File | Blob;
 	 /** JSON list of {"index", "rotation"}; array order is the new page order. */
 	pages: string;
+};
+
+/** Request body: POST /pdf/convert */
+export type Convert_pdf_convert_postBody = {
+	 /** The file to convert (multiple images may combine into one PDF). */
+	files: (File | Blob)[];
+	 /** Target format: pdf, docx, md, html, txt, png, or jpeg. */
+	target: string;
+	 /** Resolution for png/jpeg targets: 72, 150, or 300. */
+	dpi?: number | null;
 };
 
 /* ~ =================================== ~ */

@@ -215,6 +215,48 @@
         }
       }
     },
+    "/pdf/convert": {
+      "post": {
+        "tags": [
+          "pdf"
+        ],
+        "summary": "Queue a file conversion",
+        "description": "Validate the upload(s) and conversion pair, then queue a convert job.",
+        "operationId": "convert_pdf_convert_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_convert_pdf_convert_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/{job_id}": {
       "get": {
         "tags": [
@@ -403,6 +445,42 @@
           "files"
         ],
         "title": "Body_compress_pdf_compress_post"
+      },
+      "Body_convert_pdf_convert_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "The file to convert (multiple images may combine into one PDF)."
+          },
+          "target": {
+            "type": "string",
+            "title": "Target",
+            "description": "Target format: pdf, docx, md, html, txt, png, or jpeg."
+          },
+          "dpi": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dpi",
+            "description": "Resolution for png/jpeg targets: 72, 150, or 300."
+          }
+        },
+        "type": "object",
+        "required": [
+          "files",
+          "target"
+        ],
+        "title": "Body_convert_pdf_convert_post"
       },
       "Body_lock_pdf_lock_post": {
         "properties": {
