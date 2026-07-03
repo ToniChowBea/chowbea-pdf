@@ -116,3 +116,23 @@ def test_merge_job_succeeds(tmp_path):
     assert record.result_path is not None and record.result_path.exists()
     assert record.download_name == "merged.pdf"
     assert record.media_type == "application/pdf"
+
+
+def test_rotate_job_succeeds(tmp_path):
+    registry = JobRegistry()
+    workspace = tmp_path / "job"
+    workspace.mkdir()
+    write_blank_pdf(workspace / "input.pdf")
+    record = registry.create(
+        tool="rotate",
+        workspace=workspace,
+        file_count=1,
+        total_bytes=(workspace / "input.pdf").stat().st_size,
+        params={"name": "report.pdf", "pages": [{"index": 0, "rotation": 90}]},
+    )
+    asyncio.run(execute_job(registry, record.id))
+    assert record.status is JobStatus.done
+    assert record.error is None
+    assert record.result_path is not None and record.result_path.exists()
+    assert record.download_name == "rotated-report.pdf"
+    assert record.media_type == "application/pdf"

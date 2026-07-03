@@ -15,6 +15,7 @@ const TOOL_LABELS: Record<string, string> = {
   lock: "Lock",
   unlock: "Unlock",
   merge: "Merge",
+  rotate: "Rotate",
 }
 
 function BoardRow({

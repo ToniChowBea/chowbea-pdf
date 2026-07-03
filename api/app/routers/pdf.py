@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -250,4 +251,67 @@ async def merge(
         file_count=len(names),
         total_bytes=total_bytes,
         params={"names": names},
+    )
+
+
+def _parse_page_ops(raw: str) -> list[dict[str, int]]:
+    """Parse and validate the rotate tool's page list; 400 on anything off."""
+    invalid = HTTPException(status_code=400, detail="Invalid page list.")
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, RecursionError):
+        raise invalid from None
+    if not isinstance(parsed, list) or not parsed:
+        raise invalid
+    ops: list[dict[str, int]] = []
+    seen: set[int] = set()
+    for item in parsed:
+        if not isinstance(item, dict):
+            raise invalid
+        index = item.get("index")
+        rotation = item.get("rotation")
+        if isinstance(index, bool) or not isinstance(index, int) or index < 0:
+            raise invalid
+        if isinstance(rotation, bool) or not isinstance(rotation, int) or rotation not in (0, 90, 180, 270):
+            raise invalid
+        if index in seen:
+            raise HTTPException(status_code=400, detail="The page list contains duplicates.")
+        seen.add(index)
+        ops.append({"index": index, "rotation": rotation})
+    return ops
+
+
+@router.post(
+    "/rotate",
+    status_code=202,
+    summary="Queue a rotate/reorder of a PDF's pages",
+    response_model=JobAccepted,
+)
+async def rotate(
+    request: Request,
+    file: UploadFile = File(..., description="The PDF whose pages to rotate/reorder."),
+    pages: str = Form(
+        ...,
+        description='JSON list of {"index", "rotation"}; array order is the new page order.',
+    ),
+) -> JobAccepted:
+    """Validate and store the upload, then queue a rotate job."""
+    page_ops = _parse_page_ops(pages)
+
+    work_dir = Path(tempfile.mkdtemp(prefix="chowbea-rotate-"))
+    try:
+        input_path = work_dir / "input.pdf"
+        await _stream_upload_to_disk(file, input_path)
+        total_bytes = input_path.stat().st_size
+    except Exception:
+        shutil.rmtree(work_dir, ignore_errors=True)
+        raise
+
+    return await _accept_job(
+        request,
+        tool="rotate",
+        workspace=work_dir,
+        file_count=1,
+        total_bytes=total_bytes,
+        params={"name": _safe_name(file.filename, "document.pdf"), "pages": page_ops},
     )

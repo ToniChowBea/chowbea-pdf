@@ -197,6 +197,45 @@ export async function lockPdf(
   }
 }
 
+/** One page in the rotate tool's payload: original index + clockwise degrees. */
+export interface PageOp {
+  index: number
+  rotation: number
+}
+
+/** Result of a successful rotate request. */
+export interface RotateResult {
+  /** The rearranged PDF. */
+  blob: Blob
+  /** Suggested download filename parsed from the response. */
+  filename: string
+}
+
+/**
+ * Rotate and/or reorder a PDF's pages. `pages` is the complete new page
+ * order; each entry names an original page index and a rotation to add.
+ *
+ * @throws Error with the API's error detail on failure.
+ */
+export async function rotatePdf(
+  file: File,
+  pages: PageOp[],
+  onProgress?: (progress: CompressionProgress) => void,
+): Promise<RotateResult> {
+  const form = new FormData()
+  form.append("file", file)
+  form.append("pages", JSON.stringify(pages))
+  const download = await runJobFlow({
+    tool: "rotate",
+    submit: () => submitForm("/pdf/rotate", form, onProgress),
+    onProgress,
+  })
+  return {
+    blob: download.blob,
+    filename: download.filename ?? `rotated-${file.name}`,
+  }
+}
+
 /** Trigger a browser download for a Blob. */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)

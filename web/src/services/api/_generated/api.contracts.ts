@@ -61,6 +61,16 @@ export interface Body_merge_pdf_merge_post {
 }
 
 /**
+ * Schema: Body_rotate_pdf_rotate_post
+ */
+export interface Body_rotate_pdf_rotate_post {
+	/** The PDF whose pages to rotate/reorder. */
+	file: File | Blob;
+	/** JSON list of {"index", "rotation"}; array order is the new page order. */
+	pages: string;
+}
+
+/**
  * Schema: Body_unlock_pdf_unlock_post
  */
 export interface Body_unlock_pdf_unlock_post {
@@ -235,6 +245,25 @@ export type Merge_pdf_merge_postResponse422 = {
 /** Response: POST /pdf/merge (happy path) */
 export type Merge_pdf_merge_postResponse = Merge_pdf_merge_postResponse202;
 
+/** Response: POST /pdf/rotate (202 - Successful Response) */
+export type Rotate_pdf_rotate_postResponse202 = {
+	job_id: string;
+	position: number | null;
+	queue_size: number;
+};
+
+/** Response: POST /pdf/rotate (422 - Validation Error) */
+export type Rotate_pdf_rotate_postResponse422 = {
+	detail?: ({
+		loc: (string | number)[];
+		msg: string;
+		type: string;
+	})[];
+};
+
+/** Response: POST /pdf/rotate (happy path) */
+export type Rotate_pdf_rotate_postResponse = Rotate_pdf_rotate_postResponse202;
+
 /** Response: GET /jobs/{job_id} (200 - Successful Response) */
 export type Job_status_jobs__job_id__getResponse200 = {
 	id: string;
@@ -343,6 +372,14 @@ export type Lock_pdf_lock_postBody = {
 export type Merge_pdf_merge_postBody = {
 	 /** Two or more PDF files, in merge order. */
 	files: (File | Blob)[];
+};
+
+/** Request body: POST /pdf/rotate */
+export type Rotate_pdf_rotate_postBody = {
+	 /** The PDF whose pages to rotate/reorder. */
+	file: File | Blob;
+	 /** JSON list of {"index", "rotation"}; array order is the new page order. */
+	pages: string;
 };
 
 /* ~ =================================== ~ */

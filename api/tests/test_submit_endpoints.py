@@ -1,5 +1,7 @@
 """Submit endpoints return 202 + a queued job instead of processing inline."""
 
+import json
+
 from app.jobs.registry import JobStatus
 
 
@@ -98,3 +100,39 @@ def test_merge_requires_two_files(client, pdf_bytes):
     )
     assert response.status_code == 400
     assert "at least two" in response.json()["detail"]
+
+
+def test_rotate_returns_202_with_parsed_pages(client, registry, fake_queue, pdf_bytes):
+    pages = [{"index": 1, "rotation": 90}, {"index": 0, "rotation": 0}]
+    response = client.post(
+        "/pdf/rotate",
+        files={"file": ("doc.pdf", pdf_bytes, "application/pdf")},
+        data={"pages": json.dumps(pages)},
+    )
+    assert response.status_code == 202
+    record = registry.get(response.json()["job_id"])
+    assert record.tool == "rotate"
+    assert record.params["name"] == "doc.pdf"
+    assert record.params["pages"] == pages
+    assert (record.workspace / "input.pdf").exists()
+
+
+def test_rotate_rejects_bad_page_payloads(client, pdf_bytes):
+    for raw, expected_detail in [
+        ("not json", "Invalid page list."),
+        ("[]", "Invalid page list."),
+        ('[{"index": 0, "rotation": 45}]', "Invalid page list."),
+        ('[{"index": -1, "rotation": 90}]', "Invalid page list."),
+        ('[{"index": 0}]', "Invalid page list."),
+        ('[{"index": 0, "rotation": 0}, {"index": 0, "rotation": 90}]',
+         "The page list contains duplicates."),
+        ('[{"index": 0, "rotation": 90.0}]', "Invalid page list."),
+        ("[" * 20000 + "]" * 20000, "Invalid page list."),
+    ]:
+        response = client.post(
+            "/pdf/rotate",
+            files={"file": ("doc.pdf", pdf_bytes, "application/pdf")},
+            data={"pages": raw},
+        )
+        assert response.status_code == 400, raw
+        assert response.json()["detail"] == expected_detail, raw

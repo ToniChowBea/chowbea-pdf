@@ -32,6 +32,7 @@ from app.services.unlock import (
     unlock_pdf_file,
 )
 from app.services.merge import MergeError, merge_pdf_files
+from app.services.rotate import RotateError, rearrange_pdf_file
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ _KNOWN_ERRORS = (
     NotEncryptedError,
     UnlockError,
     MergeError,
+    RotateError,
 )
 
 
@@ -119,7 +121,17 @@ def _run_merge(record: JobRecord) -> None:
     record.media_type = "application/pdf"
 
 
-_RUNNERS = {"compress": _run_compress, "lock": _run_lock, "unlock": _run_unlock, "merge": _run_merge}
+def _run_rotate(record: JobRecord) -> None:
+    name: str = record.params["name"]
+    input_path = record.workspace / "input.pdf"
+    output_path = record.workspace / "output.pdf"
+    rearrange_pdf_file(input_path, name, output_path, record.params["pages"])
+    record.result_path = output_path
+    record.download_name = name if name.startswith("rotated-") else f"rotated-{name}"
+    record.media_type = "application/pdf"
+
+
+_RUNNERS = {"compress": _run_compress, "lock": _run_lock, "unlock": _run_unlock, "merge": _run_merge, "rotate": _run_rotate}
 
 
 def run_job(record: JobRecord) -> None:
