@@ -1,9 +1,11 @@
+import * as React from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowDataTransferHorizontalIcon,
   ArrowRight02Icon,
+  Cancel01Icon,
   FileScanIcon,
   Files01Icon,
   Layers01Icon,
@@ -16,7 +18,10 @@ import {
 import type { IconSvgElement } from "@hugeicons/react"
 
 import { CoffeeBlock } from "@/components/coffee-block"
+import { formatBytes } from "@/lib/api"
+import { SUPPORTED_ACCEPT, isSupportedFile } from "@/lib/supported-files"
 import { cn } from "@/lib/utils"
+import { useHandoffStore } from "@/stores/handoff"
 
 export const Route = createFileRoute("/")({ component: Home })
 
@@ -64,7 +69,7 @@ function ToolTile({ tool, index }: { tool: Tool; index: number }) {
         {live ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-ink px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-cream">
             <span className="size-1.5 rounded-full bg-amber" />
-            Live
+            Active
           </span>
         ) : (
           <span className="rounded-full border-2 border-ink/30 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-muted-ink">
@@ -115,8 +120,61 @@ function ToolTile({ tool, index }: { tool: Tool; index: number }) {
 }
 
 function Home() {
+  const pending = useHandoffStore((state) => state.files)
+  const [dragDepth, setDragDepth] = React.useState(0)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const addFiles = React.useCallback((incoming: FileList | File[] | null) => {
+    if (!incoming) return
+    const supported = Array.from(incoming).filter(isSupportedFile)
+    if (supported.length === 0) return
+    useHandoffStore.setState((state) => {
+      const seen = new Set(state.files.map((f) => `${f.name}:${f.size}`))
+      const unique: File[] = []
+      for (const file of supported) {
+        const key = `${file.name}:${file.size}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        unique.push(file)
+      }
+      return { files: [...state.files, ...unique] }
+    })
+  }, [])
+
+  const hasFileDrag = (event: React.DragEvent) =>
+    Array.from(event.dataTransfer.types).includes("Files")
+
+  const totalSize = pending.reduce((sum, file) => sum + file.size, 0)
+
   return (
-    <div className="pt-10 sm:pt-12">
+    <div
+      className="relative pt-10 sm:pt-12"
+      onDragEnter={(event) => {
+        if (!hasFileDrag(event)) return
+        event.preventDefault()
+        setDragDepth((depth) => depth + 1)
+      }}
+      onDragOver={(event) => {
+        if (hasFileDrag(event)) event.preventDefault()
+      }}
+      onDragLeave={(event) => {
+        if (!hasFileDrag(event)) return
+        setDragDepth((depth) => Math.max(0, depth - 1))
+      }}
+      onDrop={(event) => {
+        if (!hasFileDrag(event)) return
+        event.preventDefault()
+        setDragDepth(0)
+        addFiles(event.dataTransfer.files)
+      }}
+    >
+      {dragDepth > 0 && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] border-4 border-dashed border-ink bg-cream/90">
+          <span className="font-heading text-2xl font-extrabold uppercase tracking-tight text-ink">
+            Drop files anywhere
+          </span>
+        </div>
+      )}
       {/* ── Hero ── */}
       <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
         <h1 className="font-heading text-[44px] font-extrabold uppercase leading-[0.98] tracking-tight text-ink sm:text-[58px] lg:text-[62px]">
@@ -129,15 +187,48 @@ function Home() {
 
         <div className="flex max-w-[330px] flex-col items-start gap-4">
           <p className="text-[17px] font-semibold leading-snug text-subtext">
-            No accounts, no clutter — just the eight things you actually do to a PDF.
+            {pending.length > 0
+              ? `${pending.length} file${pending.length > 1 ? "s" : ""} ready — pick a tool below.`
+              : "Click Upload PDF or drag and drop files anywhere to get started."}
           </p>
-          <Link
-            to="/compress"
-            className="press inline-flex items-center gap-2.5 rounded-full border-2 border-ink bg-ink px-7 py-3.5 font-heading text-base font-extrabold uppercase tracking-wide text-cream shadow-amber-sm active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
-          >
-            <HugeiconsIcon icon={Upload04Icon} className="size-5" strokeWidth={2.2} />
-            Upload PDF
-          </Link>
+          {pending.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="press inline-flex items-center gap-2.5 rounded-full border-2 border-ink bg-ink px-7 py-3.5 font-heading text-base font-extrabold uppercase tracking-wide text-cream shadow-amber-sm active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+            >
+              <HugeiconsIcon icon={Upload04Icon} className="size-5" strokeWidth={2.2} />
+              Upload PDF
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 rounded-[16px] border-2 border-ink bg-card px-4 py-3 shadow-block-sm">
+              <span className="flex size-11 items-center justify-center rounded-[10px] border-2 border-ink bg-soft-amber text-ink">
+                <HugeiconsIcon icon={Files01Icon} className="size-5" strokeWidth={2.2} />
+              </span>
+              <div>
+                <div className="font-heading text-[15px] font-extrabold text-ink">
+                  {pending.length} file{pending.length > 1 ? "s" : ""} ready
+                </div>
+                <div className="text-[13px] font-semibold text-muted-ink">{formatBytes(totalSize)}</div>
+              </div>
+              <button
+                type="button"
+                aria-label="Clear selected files"
+                onClick={() => useHandoffStore.setState({ files: [] })}
+                className="press ml-1 flex size-8 items-center justify-center rounded-[9px] border-2 border-ink text-ink"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} className="size-4" strokeWidth={2.4} />
+              </button>
+            </div>
+          )}
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept={SUPPORTED_ACCEPT}
+            className="hidden"
+            onChange={(event) => addFiles(event.target.files)}
+          />
         </div>
       </div>
 
@@ -150,6 +241,9 @@ function Home() {
 
       {/* ── Support ── */}
       <CoffeeBlock />
+      <p className="mt-6 text-center text-[15px] font-semibold text-muted-ink">
+        No accounts, no clutter — just the eight things you actually do to a PDF.
+      </p>
     </div>
   )
 }
