@@ -231,3 +231,45 @@ def test_convert_rejections(client, pdf_bytes):
         response = client.post("/pdf/convert", files=files, data=data)
         assert response.status_code == 400, (files, data)
         assert response.json()["detail"] == detail, (files, data)
+
+
+def test_convert_rejects_zip_masquerading_as_docx(client):
+    import io
+    import zipfile as zipfile_module
+
+    buffer = io.BytesIO()
+    with zipfile_module.ZipFile(buffer, "w") as archive:
+        archive.writestr("not-word.txt", "hello")
+    response = client.post(
+        "/pdf/convert",
+        files=[("files", ("fake.docx", buffer.getvalue(), "application/octet-stream"))],
+        data={"target": "pdf"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "'fake.docx' does not look like a docx file."
+
+
+def test_convert_accepts_minimal_real_docx_container(client, registry):
+    import io
+    import zipfile as zipfile_module
+
+    buffer = io.BytesIO()
+    with zipfile_module.ZipFile(buffer, "w") as archive:
+        archive.writestr("word/document.xml", "<w:document/>")
+    response = client.post(
+        "/pdf/convert",
+        files=[("files", ("real.docx", buffer.getvalue(), "application/octet-stream"))],
+        data={"target": "txt"},
+    )
+    assert response.status_code == 202
+
+
+def test_convert_rejects_late_nul_bytes_in_text(client):
+    payload = b"a" * (1024 * 1024 + 10) + b"\x00binary"
+    response = client.post(
+        "/pdf/convert",
+        files=[("files", ("notes.txt", payload, "text/plain"))],
+        data={"target": "pdf"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "'notes.txt' does not look like a txt file."

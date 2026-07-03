@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any, List
 
@@ -354,7 +355,7 @@ async def _stream_source_to_disk(file: UploadFile, dest: Path, kind: str, name: 
     """Write any supported source file to disk with kind-aware validation.
 
     Binary kinds are checked by magic bytes; text kinds must not contain NUL
-    bytes in the first chunk. Size cap and empty check match the PDF validator.
+    bytes in any chunk. Size cap and empty check match the PDF validator.
     """
     mismatch = HTTPException(
         status_code=400, detail=f"'{name}' does not look like a {kind} file."
@@ -366,14 +367,12 @@ async def _stream_source_to_disk(file: UploadFile, dest: Path, kind: str, name: 
             chunk = await file.read(_CHUNK_SIZE)
             if not chunk:
                 break
-            if is_first_chunk:
-                prefixes = _MAGIC_PREFIXES.get(kind)
-                if prefixes is not None:
-                    if not any(chunk.startswith(p) for p in prefixes):
-                        raise mismatch
-                elif b"\x00" in chunk:
-                    raise mismatch
-                is_first_chunk = False
+            prefixes = _MAGIC_PREFIXES.get(kind)
+            if is_first_chunk and prefixes is not None and not any(chunk.startswith(p) for p in prefixes):
+                raise mismatch
+            if prefixes is None and b"\x00" in chunk:
+                raise mismatch
+            is_first_chunk = False
             size += len(chunk)
             if size > _MAX_UPLOAD_BYTES:
                 raise HTTPException(
@@ -383,6 +382,13 @@ async def _stream_source_to_disk(file: UploadFile, dest: Path, kind: str, name: 
             out.write(chunk)
     if size == 0:
         raise HTTPException(status_code=400, detail=f"'{name}' is empty.")
+    if kind == "docx":
+        try:
+            with zipfile.ZipFile(dest) as archive:
+                if "word/document.xml" not in archive.namelist():
+                    raise mismatch
+        except zipfile.BadZipFile:
+            raise mismatch from None
 
 
 @router.post(
