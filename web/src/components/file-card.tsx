@@ -31,11 +31,13 @@ export function FileCard({
   meta,
   onReplace,
   locked,
+  disabled,
 }: {
   name: string
   meta: string
   onReplace: () => void
   locked?: boolean
+  disabled?: boolean
 }) {
   return (
     <div className="rounded-[20px] border-2 border-ink bg-card p-[22px] shadow-block-lg">
@@ -52,7 +54,8 @@ export function FileCard({
       <button
         type="button"
         onClick={onReplace}
-        className="press mt-4 inline-block rounded-full border-2 border-ink px-4 py-1.5 text-[13px] font-extrabold uppercase tracking-wide text-ink"
+        disabled={disabled}
+        className="press mt-4 inline-block rounded-full border-2 border-ink px-4 py-1.5 text-[13px] font-extrabold uppercase tracking-wide text-ink disabled:opacity-30"
       >
         Replace file
       </button>

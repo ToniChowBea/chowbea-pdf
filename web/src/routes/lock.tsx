@@ -17,10 +17,10 @@ import { Dropzone } from "@/components/dropzone"
 import { FileCard } from "@/components/file-card"
 import { ToolHeader } from "@/components/tool-header"
 import { cn } from "@/lib/utils"
+import { useLockStore } from "@/stores/lock"
 import {
   type CompressionProgress,
   type EncryptionLevel,
-  type LockResult,
   downloadBlob,
   formatBytes,
   lockPdf,
@@ -34,8 +34,6 @@ const PHASE_LABELS: Record<CompressionProgress["phase"], string> = {
   processing: "Locking",
   downloading: "Downloading",
 }
-
-type Status = "idle" | "loading" | "success" | "error"
 
 // A rough 0–4 strength score from length and character variety.
 const STRENGTH_LABELS = ["", "Weak", "Fair", "Good", "Strong"] as const
@@ -105,21 +103,19 @@ const ENCRYPTION_CHOICES: Array<{ value: EncryptionLevel; label: string }> = [
 ]
 
 function LockPage() {
-  const [file, setFile] = React.useState<File | null>(null)
-  const [password, setPassword] = React.useState("")
-  const [confirm, setConfirm] = React.useState("")
-  const [showNew, setShowNew] = React.useState(false)
-  const [showConfirm, setShowConfirm] = React.useState(false)
-  const [permissions, setPermissions] = React.useState({
-    allowPrinting: true,
-    allowCopying: false,
-    allowEditing: false,
-  })
-  const [encryption, setEncryption] = React.useState<EncryptionLevel>("aes-256")
-  const [status, setStatus] = React.useState<Status>("idle")
-  const [result, setResult] = React.useState<LockResult | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
-  const [progress, setProgress] = React.useState<CompressionProgress | null>(null)
+  const {
+    file,
+    password,
+    confirm,
+    showNew,
+    showConfirm,
+    permissions,
+    encryption,
+    status,
+    result,
+    error,
+    progress,
+  } = useLockStore()
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   // Keep only the first PDF picked — lock works on a single file at a time.
@@ -129,10 +125,7 @@ function LockPage() {
       (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
     )
     if (!pdf) return
-    setFile(pdf)
-    setStatus("idle")
-    setResult(null)
-    setError(null)
+    useLockStore.setState({ file: pdf, status: "idle", result: null, error: null })
   }, [])
 
   const strength = passwordStrength(password)
@@ -142,29 +135,40 @@ function LockPage() {
 
   const handleLock = async () => {
     if (!canSubmit || !file) return
-    setStatus("loading")
-    setError(null)
-    setResult(null)
-    setProgress({ phase: "uploading", percent: 0 })
+    useLockStore.setState({
+      status: "loading",
+      error: null,
+      result: null,
+      progress: { phase: "uploading", percent: 0 },
+    })
     try {
-      const locked = await lockPdf(file, { password, encryption, ...permissions }, setProgress)
-      setResult(locked)
-      setStatus("success")
+      const current = useLockStore.getState()
+      if (!current.file) throw new Error("No file selected.")
+      const locked = await lockPdf(
+        current.file,
+        { password: current.password, encryption: current.encryption, ...current.permissions },
+        (p) => useLockStore.setState({ progress: p }),
+      )
+      useLockStore.setState({ result: locked, status: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.")
-      setStatus("error")
+      useLockStore.setState({
+        error: err instanceof Error ? err.message : "Something went wrong.",
+        status: "error",
+      })
     } finally {
-      setProgress(null)
+      useLockStore.setState({ progress: null })
     }
   }
 
   const reset = () => {
-    setFile(null)
-    setPassword("")
-    setConfirm("")
-    setStatus("idle")
-    setResult(null)
-    setError(null)
+    useLockStore.setState({
+      file: null,
+      password: "",
+      confirm: "",
+      status: "idle",
+      result: null,
+      error: null,
+    })
   }
 
   return (
@@ -197,6 +201,7 @@ function LockPage() {
             name={file.name}
             meta={formatBytes(file.size)}
             onReplace={reset}
+            disabled={status === "loading"}
           />
         )}
 
@@ -210,9 +215,9 @@ function LockPage() {
               </div>
               <PasswordInput
                 value={password}
-                onChange={setPassword}
+                onChange={(value) => useLockStore.setState({ password: value })}
                 reveal={showNew}
-                onToggleReveal={() => setShowNew((v) => !v)}
+                onToggleReveal={() => useLockStore.setState((state) => ({ showNew: !state.showNew }))}
                 placeholder="Choose a password"
                 onEnter={handleLock}
               />
@@ -223,9 +228,11 @@ function LockPage() {
               </div>
               <PasswordInput
                 value={confirm}
-                onChange={setConfirm}
+                onChange={(value) => useLockStore.setState({ confirm: value })}
                 reveal={showConfirm}
-                onToggleReveal={() => setShowConfirm((v) => !v)}
+                onToggleReveal={() =>
+                  useLockStore.setState((state) => ({ showConfirm: !state.showConfirm }))
+                }
                 placeholder="Repeat it"
                 onEnter={handleLock}
               />
@@ -267,7 +274,9 @@ function LockPage() {
                   label={perm.label}
                   checked={permissions[perm.key]}
                   onChange={(next) =>
-                    setPermissions((current) => ({ ...current, [perm.key]: next }))
+                    useLockStore.setState((state) => ({
+                      permissions: { ...state.permissions, [perm.key]: next },
+                    }))
                   }
                 />
               </div>
@@ -282,7 +291,7 @@ function LockPage() {
                 <button
                   key={choice.value}
                   type="button"
-                  onClick={() => setEncryption(choice.value)}
+                  onClick={() => useLockStore.setState({ encryption: choice.value })}
                   className={cn(
                     "px-4 py-2.5 text-[13px] font-extrabold uppercase tracking-wide transition-colors",
                     i > 0 && "border-l-2 border-ink",

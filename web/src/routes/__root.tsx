@@ -3,12 +3,15 @@ import {
   Link,
   Scripts,
   createRootRoute,
+  useRouter,
+  useRouterState,
 } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { File01Icon } from "@hugeicons/core-free-icons"
 
+import { resolveQueueToggle } from "@/lib/queue-toggle"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
@@ -72,6 +75,32 @@ function Wordmark() {
   )
 }
 
+// Where the user was before toggling to the queue; module scope so it
+// survives re-renders without being page state.
+let rememberedPath: string | null = null
+
+/** The header Queue pill: navigates like a link but toggles back on the
+second click. Middle-click / open-in-new-tab keep normal link behavior. */
+function QueueLink() {
+  const router = useRouter()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  return (
+    <Link
+      to="/queue"
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+        event.preventDefault()
+        const { to, remember } = resolveQueueToggle(pathname, rememberedPath)
+        rememberedPath = remember
+        router.history.push(to)
+      }}
+      className="press inline-flex items-center gap-2 rounded-full border-2 border-ink bg-card px-5 py-2.5 text-sm font-extrabold tracking-wide text-ink uppercase shadow-block-sm"
+    >
+      Queue
+    </Link>
+  )
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -84,12 +113,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             {/* Top bar: wordmark left, queue link right. */}
             <header className="flex items-center justify-between">
               <Wordmark />
-              <Link
-                to="/queue"
-                className="press inline-flex items-center gap-2 rounded-full border-2 border-ink bg-card px-5 py-2.5 text-sm font-extrabold tracking-wide text-ink uppercase shadow-block-sm"
-              >
-                Queue
-              </Link>
+              <QueueLink />
             </header>
 
             <main className="flex-1">{children}</main>

@@ -16,9 +16,9 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Dropzone } from "@/components/dropzone"
 import { ToolHeader } from "@/components/tool-header"
+import { useMergeStore } from "@/stores/merge"
 import {
   type CompressionProgress,
-  type MergeResult,
   downloadBlob,
   formatBytes,
   mergePdfs,
@@ -33,14 +33,8 @@ const PHASE_LABELS: Record<CompressionProgress["phase"], string> = {
   downloading: "Downloading",
 }
 
-type Status = "idle" | "loading" | "success" | "error"
-
 function MergePage() {
-  const [files, setFiles] = React.useState<File[]>([])
-  const [status, setStatus] = React.useState<Status>("idle")
-  const [result, setResult] = React.useState<MergeResult | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
-  const [progress, setProgress] = React.useState<CompressionProgress | null>(null)
+  const { files, status, result, error, progress } = useMergeStore()
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   // Merge newly picked files into state, keeping only PDFs and skipping duplicates.
@@ -49,8 +43,8 @@ function MergePage() {
     const pdfs = Array.from(incoming).filter(
       (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"),
     )
-    setFiles((current) => {
-      const seen = new Set(current.map((f) => `${f.name}:${f.size}`))
+    useMergeStore.setState((state) => {
+      const seen = new Set(state.files.map((f) => `${f.name}:${f.size}`))
       const unique: File[] = []
       for (const file of pdfs) {
         const key = `${file.name}:${file.size}`
@@ -58,47 +52,44 @@ function MergePage() {
         seen.add(key)
         unique.push(file)
       }
-      return [...current, ...unique]
+      return { files: [...state.files, ...unique] }
     })
-    setStatus("idle")
-    setResult(null)
-    setError(null)
+    useMergeStore.setState({ status: "idle", result: null, error: null })
   }, [])
 
   const removeFile = (index: number) => {
-    setFiles((current) => current.filter((_, i) => i !== index))
-    setStatus("idle")
-    setResult(null)
+    useMergeStore.setState((state) => ({ files: state.files.filter((_, i) => i !== index) }))
+    useMergeStore.setState({ status: "idle", result: null })
   }
 
   // Swap a file with its neighbour; list order is merge order.
   const moveFile = (index: number, delta: -1 | 1) => {
-    setFiles((current) => {
+    useMergeStore.setState((state) => {
       const target = index + delta
-      if (target < 0 || target >= current.length) return current
-      const next = [...current]
+      if (target < 0 || target >= state.files.length) return { files: state.files }
+      const next = [...state.files]
       ;[next[index], next[target]] = [next[target], next[index]]
-      return next
+      return { files: next }
     })
-    setStatus("idle")
-    setResult(null)
+    useMergeStore.setState({ status: "idle", result: null })
   }
 
   const handleMerge = async () => {
     if (files.length < 2) return
-    setStatus("loading")
-    setError(null)
-    setResult(null)
-    setProgress({ phase: "uploading", percent: 0 })
+    useMergeStore.setState({ status: "loading", error: null, result: null, progress: { phase: "uploading", percent: 0 } })
     try {
-      const merged = await mergePdfs(files, setProgress)
-      setResult(merged)
-      setStatus("success")
+      const merged = await mergePdfs(
+        useMergeStore.getState().files,
+        (p) => useMergeStore.setState({ progress: p }),
+      )
+      useMergeStore.setState({ result: merged, status: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.")
-      setStatus("error")
+      useMergeStore.setState({
+        error: err instanceof Error ? err.message : "Something went wrong.",
+        status: "error",
+      })
     } finally {
-      setProgress(null)
+      useMergeStore.setState({ progress: null })
     }
   }
 

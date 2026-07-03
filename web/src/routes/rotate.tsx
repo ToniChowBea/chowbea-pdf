@@ -32,9 +32,9 @@ import { Progress } from "@/components/ui/progress"
 import { Dropzone } from "@/components/dropzone"
 import { ToolHeader } from "@/components/tool-header"
 import { cn } from "@/lib/utils"
+import { type PageCard, useRotateStore } from "@/stores/rotate"
 import {
   type CompressionProgress,
-  type RotateResult,
   downloadBlob,
   formatBytes,
   rotatePdf,
@@ -51,16 +51,9 @@ const PHASE_LABELS: Record<CompressionProgress["phase"], string> = {
   downloading: "Downloading",
 }
 
-type Status = "idle" | "loading" | "success" | "error"
-
-interface PageCard {
-  /** 0-based index of this page in the ORIGINAL document. */
-  originalIndex: number
-  /** Clockwise degrees added by the user; 0/90/180/270. */
-  rotation: number
-  /** Rendered thumbnail data URL, or null while still rendering. */
-  thumbnail: string | null
-}
+// Cancellation token for in-flight thumbnail rendering. Module scope: a
+// remount must still be able to invalidate a previous file's render run.
+const renderRun = { current: 0 }
 
 /** Render every page to a small data-URL thumbnail, reporting one at a time.
 
@@ -160,14 +153,8 @@ function SortablePage({
 }
 
 function RotatePage() {
-  const [file, setFile] = React.useState<File | null>(null)
-  const [cards, setCards] = React.useState<PageCard[]>([])
-  const [status, setStatus] = React.useState<Status>("idle")
-  const [result, setResult] = React.useState<RotateResult | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
-  const [progress, setProgress] = React.useState<CompressionProgress | null>(null)
+  const { file, cards, status, result, error, progress } = useRotateStore()
   const inputRef = React.useRef<HTMLInputElement>(null)
-  const renderRun = React.useRef(0)
 
   const loadFile = React.useCallback((incoming: FileList | null) => {
     const picked = incoming?.[0]
@@ -176,49 +163,48 @@ function RotatePage() {
       picked.type === "application/pdf" || picked.name.toLowerCase().endsWith(".pdf")
     if (!isPdf) return
     const run = ++renderRun.current
-    setFile(picked)
-    setCards([])
-    setStatus("idle")
-    setResult(null)
-    setError(null)
+    useRotateStore.setState({ file: picked, cards: [], status: "idle", result: null, error: null })
     renderThumbnails(
       picked,
       (pageCount) => {
         if (renderRun.current !== run) return
         // Seed placeholder cards immediately; thumbnails stream in below.
-        setCards(
-          Array.from({ length: pageCount }, (_, i) => ({
+        useRotateStore.setState({
+          cards: Array.from({ length: pageCount }, (_, i) => ({
             originalIndex: i,
             rotation: 0,
             thumbnail: null,
           })),
-        )
+        })
       },
       (index, dataUrl) => {
         if (renderRun.current !== run) return
-        setCards((current) =>
-          current.map((card) =>
+        useRotateStore.setState((state) => ({
+          cards: state.cards.map((card) =>
             card.originalIndex === index ? { ...card, thumbnail: dataUrl } : card,
           ),
-        )
+        }))
       },
       () => renderRun.current !== run,
     )
       .then((pageCount) => {
         if (renderRun.current !== run) return
         if (pageCount > MAX_PAGES) {
-          setFile(null)
-          setError(`This tool handles up to ${MAX_PAGES} pages — this file has ${pageCount}.`)
+          useRotateStore.setState({
+            file: null,
+            error: `This tool handles up to ${MAX_PAGES} pages — this file has ${pageCount}.`,
+          })
         }
       })
       .catch((err) => {
         if (renderRun.current !== run) return
-        setFile(null)
-        setError(
-          err?.name === "PasswordException"
-            ? "This PDF is password-protected — unlock it first."
-            : "Couldn't read this PDF.",
-        )
+        useRotateStore.setState({
+          file: null,
+          error:
+            err?.name === "PasswordException"
+              ? "This PDF is password-protected — unlock it first."
+              : "Couldn't read this PDF.",
+        })
       })
   }, [])
 
@@ -231,48 +217,44 @@ function RotatePage() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    setCards((current) => {
-      const from = current.findIndex((c) => String(c.originalIndex) === active.id)
-      const to = current.findIndex((c) => String(c.originalIndex) === over.id)
-      if (from < 0 || to < 0) return current
-      return arrayMove(current, from, to)
+    useRotateStore.setState((state) => {
+      const from = state.cards.findIndex((c) => String(c.originalIndex) === active.id)
+      const to = state.cards.findIndex((c) => String(c.originalIndex) === over.id)
+      if (from < 0 || to < 0) return state
+      return { cards: arrayMove(state.cards, from, to) }
     })
   }
 
   const rotateCard = (originalIndex: number) => {
-    setCards((current) =>
-      current.map((card) =>
+    useRotateStore.setState((state) => ({
+      cards: state.cards.map((card) =>
         card.originalIndex === originalIndex
           ? { ...card, rotation: (card.rotation + 90) % 360 }
           : card,
       ),
-    )
+    }))
   }
 
   const rotateAll = () => {
-    setCards((current) =>
-      current.map((card) => ({ ...card, rotation: (card.rotation + 90) % 360 })),
-    )
+    useRotateStore.setState((state) => ({
+      cards: state.cards.map((card) => ({ ...card, rotation: (card.rotation + 90) % 360 })),
+    }))
   }
 
   const reset = () => {
-    setCards((current) =>
-      [...current]
+    useRotateStore.setState((state) => ({
+      cards: [...state.cards]
         .sort((a, b) => a.originalIndex - b.originalIndex)
         .map((card) => ({ ...card, rotation: 0 })),
-    )
-    setStatus("idle")
-    setResult(null)
-    setError(null)
+      status: "idle" as const,
+      result: null,
+      error: null,
+    }))
   }
 
   const clearFile = () => {
     renderRun.current++
-    setFile(null)
-    setCards([])
-    setStatus("idle")
-    setResult(null)
-    setError(null)
+    useRotateStore.setState({ file: null, cards: [], status: "idle", result: null, error: null })
   }
 
   const changed = cards.some((card, i) => card.rotation !== 0 || card.originalIndex !== i)
@@ -280,23 +262,29 @@ function RotatePage() {
 
   const handleSubmit = async () => {
     if (!file || !changed) return
-    setStatus("loading")
-    setError(null)
-    setResult(null)
-    setProgress({ phase: "uploading", percent: 0 })
+    useRotateStore.setState({
+      status: "loading",
+      error: null,
+      result: null,
+      progress: { phase: "uploading", percent: 0 },
+    })
     try {
+      // Read fresh via getState() so a job kicked off here keeps reporting
+      // correctly even if the page unmounts before it resolves.
+      const current = useRotateStore.getState()
       const rotated = await rotatePdf(
-        file,
-        cards.map((card) => ({ index: card.originalIndex, rotation: card.rotation })),
-        setProgress,
+        current.file!,
+        current.cards.map((card) => ({ index: card.originalIndex, rotation: card.rotation })),
+        (p) => useRotateStore.setState({ progress: p }),
       )
-      setResult(rotated)
-      setStatus("success")
+      useRotateStore.setState({ result: rotated, status: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.")
-      setStatus("error")
+      useRotateStore.setState({
+        error: err instanceof Error ? err.message : "Something went wrong.",
+        status: "error",
+      })
     } finally {
-      setProgress(null)
+      useRotateStore.setState({ progress: null })
     }
   }
 
@@ -334,8 +322,9 @@ function RotatePage() {
               <button
                 type="button"
                 aria-label="Remove file"
+                disabled={loading}
                 onClick={clearFile}
-                className="press flex size-8 shrink-0 items-center justify-center rounded-[9px] border-2 border-ink text-ink"
+                className="press flex size-8 shrink-0 items-center justify-center rounded-[9px] border-2 border-ink text-ink disabled:opacity-30"
               >
                 <HugeiconsIcon icon={Cancel01Icon} className="size-4" strokeWidth={2.4} />
               </button>
