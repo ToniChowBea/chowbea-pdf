@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # deploys. Read without the CHOWBEA_ prefix, hence the explicit alias.
     commit_sha: str = Field(default="dev", validation_alias="RAILWAY_GIT_COMMIT_SHA")
 
+    # Directory for small durable state (the jobs counter); a Railway volume
+    # is mounted here in production so the data survives redeploys.
+    data_dir: str = "./data"
+
     model_config = SettingsConfigDict(env_file=".env", env_prefix="CHOWBEA_")
 
     @property

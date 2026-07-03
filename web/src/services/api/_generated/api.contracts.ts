@@ -152,6 +152,7 @@ export interface JobStatusResponse {
  */
 export interface QueueBoard {
 	concurrency: number;
+	jobs_completed: number;
 	processing: {
 		id_prefix: string;
 		tool: string;
@@ -338,6 +339,7 @@ export type Job_download_jobs__job_id__download_getResponse = Job_download_jobs_
 /** Response: GET /queue (200 - Successful Response) */
 export type Queue_board_queue_getResponse200 = {
 	concurrency: number;
+	jobs_completed: number;
 	processing: {
 		id_prefix: string;
 		tool: string;

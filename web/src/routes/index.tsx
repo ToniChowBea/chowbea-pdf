@@ -1,5 +1,6 @@
+import * as React from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { motion } from "motion/react"
+import { animate, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowDataTransferHorizontalIcon,
@@ -16,6 +17,7 @@ import {
 import type { IconSvgElement } from "@hugeicons/react"
 
 import { CoffeeBlock } from "@/components/coffee-block"
+import { fetchQueueBoard } from "@/lib/jobs"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/")({ component: Home })
@@ -114,6 +116,46 @@ function ToolTile({ tool, index }: { tool: Tool; index: number }) {
   )
 }
 
+/** Lifetime jobs-performed chip. Renders nothing until the count arrives and
+never shows zero — a landing page shouldn't advertise "0 jobs done". */
+function JobsCounter() {
+  const [count, setCount] = React.useState<number | null>(null)
+  const [display, setDisplay] = React.useState(0)
+
+  React.useEffect(() => {
+    let cancelled = false
+    fetchQueueBoard()
+      .then((board) => {
+        if (!cancelled && typeof board.jobs_completed === "number") {
+          setCount(board.jobs_completed)
+        }
+      })
+      .catch(() => {
+        // A landing page shows nothing rather than an error state.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (count === null || count === 0) return
+    const controls = animate(0, count, {
+      duration: 0.8,
+      ease: "easeOut",
+      onUpdate: (value) => setDisplay(Math.round(value)),
+    })
+    return () => controls.stop()
+  }, [count])
+
+  if (count === null || count === 0) return null
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-amber px-4 py-2 text-[13px] font-extrabold uppercase tracking-wide text-ink shadow-block-sm">
+      <span className="tabular-nums">{display.toLocaleString()}</span> jobs done
+    </span>
+  )
+}
+
 function Home() {
   return (
     <div className="pt-10 sm:pt-12">
@@ -131,13 +173,16 @@ function Home() {
           <p className="text-[17px] font-semibold leading-snug text-subtext">
             No accounts, no clutter — just the eight things you actually do to a PDF.
           </p>
-          <Link
-            to="/compress"
-            className="press inline-flex items-center gap-2.5 rounded-full border-2 border-ink bg-ink px-7 py-3.5 font-heading text-base font-extrabold uppercase tracking-wide text-cream shadow-amber-sm active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
-          >
-            <HugeiconsIcon icon={Upload04Icon} className="size-5" strokeWidth={2.2} />
-            Upload PDF
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to="/compress"
+              className="press inline-flex items-center gap-2.5 rounded-full border-2 border-ink bg-ink px-7 py-3.5 font-heading text-base font-extrabold uppercase tracking-wide text-cream shadow-amber-sm active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+            >
+              <HugeiconsIcon icon={Upload04Icon} className="size-5" strokeWidth={2.2} />
+              Upload PDF
+            </Link>
+            <JobsCounter />
+          </div>
         </div>
       </div>
 

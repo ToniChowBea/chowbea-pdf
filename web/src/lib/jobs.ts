@@ -42,6 +42,7 @@ export interface QueueBoard {
   concurrency: number
   processing: QueueBoardEntry[]
   waiting: QueueBoardEntry[]
+  jobs_completed: number
 }
 
 /** Progress update for the UI; `percent` is null when the phase is indeterminate. */

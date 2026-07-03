@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,18 +11,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.jobs.queue import JobQueue
 from app.jobs.registry import JobRegistry
+from app.jobs.stats import CounterStore
 from app.jobs.worker import execute_job
 from app.routers import jobs, pdf
 
 logger = logging.getLogger(__name__)
 
 
-async def _run_queue(job_queue: JobQueue, registry: JobRegistry) -> None:
+async def _run_queue(job_queue: JobQueue, registry: JobRegistry, handle) -> None:
     """Connect and start consuming, retrying forever so the API can come up
     (and serve 503s on submit) while the broker is unreachable."""
-
-    async def handle(job_id: str) -> None:
-        await execute_job(registry, job_id)
 
     while True:
         try:
@@ -52,7 +51,19 @@ async def lifespan(app: FastAPI):
     job_queue = JobQueue(settings.rabbitmq_url, prefetch=settings.job_concurrency)
     app.state.registry = registry
     app.state.job_queue = job_queue
-    queue_task = asyncio.create_task(_run_queue(job_queue, registry))
+    counter = None
+    try:
+        data_dir = Path(settings.data_dir)
+        data_dir.mkdir(parents=True, exist_ok=True)
+        counter = CounterStore(data_dir / "stats.json")
+    except OSError:
+        logger.warning("Data dir %s unavailable; the jobs counter is disabled", settings.data_dir)
+    app.state.counter = counter
+
+    async def handle(job_id: str) -> None:
+        await execute_job(registry, job_id, counter)
+
+    queue_task = asyncio.create_task(_run_queue(job_queue, registry, handle))
     sweep_task = asyncio.create_task(_sweep_forever(registry))
     try:
         yield

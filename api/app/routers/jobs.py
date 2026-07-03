@@ -65,8 +65,10 @@ def _board_entry(record: JobRecord) -> BoardEntry:
 @router.get("/queue", summary="Public queue board", response_model=QueueBoard)
 async def queue_board(request: Request) -> QueueBoard:
     registry = request.app.state.registry
+    counter = getattr(request.app.state, "counter", None)
     return QueueBoard(
         concurrency=settings.job_concurrency,
+        jobs_completed=counter.count if counter is not None else 0,
         processing=[_board_entry(r) for r in registry.processing()],
         waiting=[_board_entry(r) for r in registry.waiting()],
     )

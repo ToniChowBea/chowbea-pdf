@@ -156,3 +156,46 @@ def test_convert_job_succeeds_with_engine_free_pair(tmp_path):
     assert record.download_name == "doc.txt"
     assert record.media_type == "text/plain"
     assert record.result_path is not None and record.result_path.exists()
+
+
+def test_done_job_increments_counter(tmp_path):
+    from app.jobs.stats import CounterStore
+
+    registry = JobRegistry()
+    counter = CounterStore(tmp_path / "stats.json")
+    workspace = tmp_path / "job"
+    workspace.mkdir()
+    write_blank_pdf(workspace / "input.pdf")
+    record = registry.create(
+        tool="lock",
+        workspace=workspace,
+        file_count=1,
+        total_bytes=1,
+        params={
+            "password": "pw", "allow_printing": True, "allow_copying": False,
+            "allow_editing": False, "encryption": "aes-256", "name": "a.pdf",
+        },
+    )
+    asyncio.run(execute_job(registry, record.id, counter))
+    assert record.status is JobStatus.done
+    assert counter.count == 1
+
+
+def test_failed_job_does_not_increment_counter(tmp_path):
+    from app.jobs.stats import CounterStore
+
+    registry = JobRegistry()
+    counter = CounterStore(tmp_path / "stats.json")
+    workspace = tmp_path / "job"
+    workspace.mkdir()
+    write_blank_pdf(workspace / "input.pdf")
+    record = registry.create(
+        tool="unlock",
+        workspace=workspace,
+        file_count=1,
+        total_bytes=1,
+        params={"password": "wrong", "name": "a.pdf"},
+    )
+    asyncio.run(execute_job(registry, record.id, counter))
+    assert record.status is JobStatus.failed
+    assert counter.count == 0

@@ -63,3 +63,19 @@ def test_queue_board_is_anonymized(client, registry, pdf_bytes):
     assert [e["id_prefix"] for e in board["waiting"]] == [waiting_id[:6]]
     assert "secret" not in board["processing"][0].get("name", "")
     assert "name" not in board["processing"][0]
+
+
+def test_queue_board_reports_jobs_completed(client, tmp_path):
+    from app.jobs.stats import CounterStore
+
+    from app.main import app
+
+    counter = CounterStore(tmp_path / "stats.json")
+    counter.increment()
+    counter.increment()
+    app.state.counter = counter
+    try:
+        board = client.get("/queue").json()
+        assert board["jobs_completed"] == 2
+    finally:
+        del app.state.counter

@@ -37,5 +37,6 @@ class BoardEntry(BaseModel):
 
 class QueueBoard(BaseModel):
     concurrency: int
+    jobs_completed: int
     processing: list[BoardEntry]
     waiting: list[BoardEntry]

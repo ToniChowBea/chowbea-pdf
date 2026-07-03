@@ -13,6 +13,7 @@ import time
 import zipfile
 
 from app.jobs.registry import JobRecord, JobRegistry, JobStatus
+from app.jobs.stats import CounterStore
 from app.services.compress import (
     CompressionError,
     CompressionQuality,
@@ -157,7 +158,7 @@ def run_job(record: JobRecord) -> None:
     runner(record)
 
 
-async def execute_job(registry: JobRegistry, job_id: str) -> None:
+async def execute_job(registry: JobRegistry, job_id: str, counter: CounterStore | None = None) -> None:
     """Consumer handler: run one job and record the outcome on the registry."""
     record = registry.get(job_id)
     if record is None:
@@ -182,5 +183,7 @@ async def execute_job(registry: JobRegistry, job_id: str) -> None:
         record.error = "Something went wrong while processing this file."
     else:
         record.status = JobStatus.done
+        if counter is not None:
+            counter.increment()
     finally:
         record.finished_at = time.time()
