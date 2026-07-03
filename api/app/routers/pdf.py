@@ -259,7 +259,7 @@ def _parse_page_ops(raw: str) -> list[dict[str, int]]:
     invalid = HTTPException(status_code=400, detail="Invalid page list.")
     try:
         parsed = json.loads(raw)
-    except ValueError:
+    except (ValueError, RecursionError):
         raise invalid from None
     if not isinstance(parsed, list) or not parsed:
         raise invalid
@@ -272,7 +272,7 @@ def _parse_page_ops(raw: str) -> list[dict[str, int]]:
         rotation = item.get("rotation")
         if isinstance(index, bool) or not isinstance(index, int) or index < 0:
             raise invalid
-        if isinstance(rotation, bool) or rotation not in (0, 90, 180, 270):
+        if isinstance(rotation, bool) or not isinstance(rotation, int) or rotation not in (0, 90, 180, 270):
             raise invalid
         if index in seen:
             raise HTTPException(status_code=400, detail="The page list contains duplicates.")

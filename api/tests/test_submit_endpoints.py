@@ -126,6 +126,8 @@ def test_rotate_rejects_bad_page_payloads(client, pdf_bytes):
         ('[{"index": 0}]', "Invalid page list."),
         ('[{"index": 0, "rotation": 0}, {"index": 0, "rotation": 90}]',
          "The page list contains duplicates."),
+        ('[{"index": 0, "rotation": 90.0}]', "Invalid page list."),
+        ("[" * 20000 + "]" * 20000, "Invalid page list."),
     ]:
         response = client.post(
             "/pdf/rotate",

@@ -87,3 +87,11 @@ def test_encrypted_input_is_rejected(tmp_path):
     pdf.close()
     with pytest.raises(RotateError, match="'locked.pdf' is password-protected"):
         rearrange_pdf_file(src, "locked.pdf", out, [{"index": 0, "rotation": 0}])
+
+
+def test_garbage_input_is_rejected(tmp_path):
+    src = tmp_path / "junk.pdf"
+    out = tmp_path / "out.pdf"
+    src.write_bytes(b"%PDF-not really a pdf")
+    with pytest.raises(RotateError, match="'junk.pdf' could not be read"):
+        rearrange_pdf_file(src, "junk.pdf", out, [{"index": 0, "rotation": 0}])

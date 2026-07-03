@@ -10,6 +10,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   TouchSensor,
   closestCenter,
@@ -21,6 +22,7 @@ import {
   SortableContext,
   arrayMove,
   rectSortingStrategy,
+  sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -74,8 +76,8 @@ async function renderThumbnails(
   const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
   const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() })
-  const doc = await loadingTask.promise
   try {
+    const doc = await loadingTask.promise
     if (doc.numPages > MAX_PAGES) return doc.numPages
     onCount(doc.numPages)
     for (let i = 0; i < doc.numPages; i++) {
@@ -223,6 +225,7 @@ function RotatePage() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -260,6 +263,7 @@ function RotatePage() {
     )
     setStatus("idle")
     setResult(null)
+    setError(null)
   }
 
   const clearFile = () => {
