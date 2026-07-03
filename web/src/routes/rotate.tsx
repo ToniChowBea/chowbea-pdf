@@ -246,8 +246,10 @@ function RotatePage() {
       cards: [...state.cards]
         .sort((a, b) => a.originalIndex - b.originalIndex)
         .map((card) => ({ ...card, rotation: 0 })),
+      status: "idle" as const,
+      result: null,
+      error: null,
     }))
-    useRotateStore.setState({ status: "idle", result: null, error: null })
   }
 
   const clearFile = () => {
