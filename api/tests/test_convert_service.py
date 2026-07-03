@@ -12,7 +12,7 @@ from pathlib import Path
 import pikepdf
 import pytest
 
-from app.services.convert import ConvertError, convert_files
+from app.services.convert import ConvertError, _data_only_url_fetcher, convert_files
 
 # A valid 1x1 transparent PNG.
 TINY_PNG = base64.b64decode(
@@ -109,6 +109,17 @@ def test_md_to_docx_roundtrip_to_txt(tmp_path):
 
 
 @needs_pandoc
+def test_md_to_docx_does_not_embed_local_files(tmp_path):
+    names = write_inputs(
+        tmp_path, [("notes.md", b"# Doc\n\n![leak](/etc/hosts)\n\nText.")]
+    )
+    result_path, _, _ = convert_files(tmp_path, names, "md", "docx")
+    with zipfile.ZipFile(result_path) as archive:
+        media = [n for n in archive.namelist() if n.startswith("word/media/")]
+        assert media == []  # the referenced local file must NOT be embedded
+
+
+@needs_pandoc
 @needs_soffice
 def test_docx_to_pdf_via_libreoffice(tmp_path):
     md_names = write_inputs(tmp_path, [("report.md", b"# Report\n\nBody text.")])
@@ -138,6 +149,25 @@ def test_txt_to_pdf_via_weasyprint(tmp_path):
     result_path, download_name, _ = convert_files(tmp_path, names, "txt", "pdf")
     assert download_name == "log.pdf"
     assert result_path.read_bytes()[:4] == b"%PDF"
+
+
+def test_url_fetcher_blocks_everything_but_data_uris():
+    for url in ("file:///etc/passwd", "http://127.0.0.1/x", "https://example.com/a.png", "ftp://x/y"):
+        with pytest.raises(ValueError):
+            _data_only_url_fetcher(url)
+
+
+def test_url_fetcher_allows_data_uris():
+    pytest.importorskip("weasyprint")
+    result = _data_only_url_fetcher("data:text/plain;base64,aGk=")
+    # weasyprint==69.0's default_url_fetcher returns a URLFetcherResponse
+    # (older versions returned a dict with a "string" key); read() is the
+    # stable way to get the decoded payload back either way.
+    try:
+        body = result.read()
+    finally:
+        result.close()
+    assert body == b"hi"
 
 
 def test_html_to_pdf_does_not_fetch_external_resources(tmp_path):
