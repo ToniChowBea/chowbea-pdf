@@ -39,7 +39,7 @@ const TOOLS: Tool[] = [
   { name: "Merge", description: "Combine PDFs", icon: Layers01Icon, to: "/merge" },
   { name: "Split", description: "Separate pages", icon: Files01Icon },
   { name: "Convert", description: "To & from Word, images", icon: ArrowDataTransferHorizontalIcon },
-  { name: "Rotate", description: "Rotate & reorder pages", icon: RotateClockwiseIcon },
+  { name: "Rotate", description: "Rotate & reorder pages", icon: RotateClockwiseIcon, to: "/rotate" },
 ]
 
 function ToolTile({ tool, index }: { tool: Tool; index: number }) {
