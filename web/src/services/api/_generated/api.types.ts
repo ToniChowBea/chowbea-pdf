@@ -79,6 +79,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pdf/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a rotate/reorder of a PDF's pages
+         * @description Validate and store the upload, then queue a rotate job.
+         */
+        post: operations["rotate_pdf_rotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -228,6 +248,20 @@ export interface components {
              * @description Two or more PDF files, in merge order.
              */
             files: string[];
+        };
+        /** Body_rotate_pdf_rotate_post */
+        Body_rotate_pdf_rotate_post: {
+            /**
+             * File
+             * Format: binary
+             * @description The PDF whose pages to rotate/reorder.
+             */
+            file: string;
+            /**
+             * Pages
+             * @description JSON list of {"index", "rotation"}; array order is the new page order.
+             */
+            pages: string;
         };
         /** Body_unlock_pdf_unlock_post */
         Body_unlock_pdf_unlock_post: {
@@ -433,6 +467,39 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_merge_pdf_merge_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rotate_pdf_rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_rotate_pdf_rotate_post"];
             };
         };
         responses: {

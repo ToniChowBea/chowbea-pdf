@@ -173,6 +173,48 @@
         }
       }
     },
+    "/pdf/rotate": {
+      "post": {
+        "tags": [
+          "pdf"
+        ],
+        "summary": "Queue a rotate/reorder of a PDF's pages",
+        "description": "Validate and store the upload, then queue a rotate job.",
+        "operationId": "rotate_pdf_rotate_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_rotate_pdf_rotate_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/{job_id}": {
       "get": {
         "tags": [
@@ -423,6 +465,27 @@
           "files"
         ],
         "title": "Body_merge_pdf_merge_post"
+      },
+      "Body_rotate_pdf_rotate_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File",
+            "description": "The PDF whose pages to rotate/reorder."
+          },
+          "pages": {
+            "type": "string",
+            "title": "Pages",
+            "description": "JSON list of {\"index\", \"rotation\"}; array order is the new page order."
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "pages"
+        ],
+        "title": "Body_rotate_pdf_rotate_post"
       },
       "Body_unlock_pdf_unlock_post": {
         "properties": {
