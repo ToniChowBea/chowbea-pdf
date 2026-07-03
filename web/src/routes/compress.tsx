@@ -182,8 +182,8 @@ function CompressPage() {
           </div>
         )}
 
-        {/* ── Right: settings ── */}
-        <div className="rounded-[20px] border-2 border-ink bg-card p-6 shadow-block-lg sm:p-8">
+        {/* ── Right: settings — sticky on desktop so it stays in view beside long lists ── */}
+        <div className="rounded-[20px] border-2 border-ink bg-card p-6 shadow-block-lg sm:p-8 lg:sticky lg:top-7">
           <div className="mb-3.5 text-[13px] font-extrabold uppercase tracking-wide text-ink">
             Compression level
           </div>
