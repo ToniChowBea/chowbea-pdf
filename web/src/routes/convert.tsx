@@ -25,6 +25,7 @@ import {
   formatBytes,
 } from "@/lib/api"
 import { useConvertStore } from "@/stores/convert"
+import { useHandoffStore } from "@/stores/handoff"
 
 export const Route = createFileRoute("/convert")({ component: ConvertPage })
 
@@ -116,7 +117,7 @@ function ConvertPage() {
   const isImageBatch = sourceKind === "image"
   const loading = status === "loading"
 
-  const addFiles = React.useCallback((incoming: FileList | null) => {
+  const addFiles = React.useCallback((incoming: FileList | File[] | null) => {
     if (!incoming) return
     const supported = Array.from(incoming).filter((file) => kindOf(file) !== null)
     if (supported.length === 0) return
@@ -144,6 +145,18 @@ function ConvertPage() {
       const kind = kindOf(file)!
       return { files: [file], target: kind === "image" ? ("pdf" as ConvertTarget) : null, status: "idle" as const, result: null, error: null }
     })
+  }, [])
+
+  // Adopt files handed off from the landing page — only into an empty, idle
+  // page, and only take() when adopting so unclaimed files survive for a
+  // different tool choice.
+  React.useEffect(() => {
+    const state = useConvertStore.getState()
+    if (state.files.length > 0 || state.status !== "idle") return
+    const pending = useHandoffStore.getState().take()
+    if (pending.length > 0) addFiles(pending)
+    // Intentionally mount-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const removeFile = (index: number) => {

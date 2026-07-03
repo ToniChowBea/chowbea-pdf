@@ -18,6 +18,7 @@ import { FileCard } from "@/components/file-card"
 import { ToolHeader } from "@/components/tool-header"
 import { cn } from "@/lib/utils"
 import { useLockStore } from "@/stores/lock"
+import { useHandoffStore } from "@/stores/handoff"
 import {
   type CompressionProgress,
   type EncryptionLevel,
@@ -119,13 +120,25 @@ function LockPage() {
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   // Keep only the first PDF picked — lock works on a single file at a time.
-  const pickFile = React.useCallback((incoming: FileList | null) => {
+  const pickFile = React.useCallback((incoming: FileList | File[] | null) => {
     if (!incoming || incoming.length === 0) return
     const pdf = Array.from(incoming).find(
       (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
     )
     if (!pdf) return
     useLockStore.setState({ file: pdf, status: "idle", result: null, error: null })
+  }, [])
+
+  // Adopt files handed off from the landing page — only into an empty, idle
+  // page, and only take() when adopting so unclaimed files survive for a
+  // different tool choice.
+  React.useEffect(() => {
+    const state = useLockStore.getState()
+    if (state.file !== null || state.status !== "idle") return
+    const pending = useHandoffStore.getState().take()
+    if (pending.length > 0) pickFile(pending)
+    // Intentionally mount-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const strength = passwordStrength(password)

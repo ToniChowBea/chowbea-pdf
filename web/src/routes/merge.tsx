@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress"
 import { Dropzone } from "@/components/dropzone"
 import { ToolHeader } from "@/components/tool-header"
 import { useMergeStore } from "@/stores/merge"
+import { useHandoffStore } from "@/stores/handoff"
 import {
   type CompressionProgress,
   downloadBlob,
@@ -38,7 +39,7 @@ function MergePage() {
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   // Merge newly picked files into state, keeping only PDFs and skipping duplicates.
-  const addFiles = React.useCallback((incoming: FileList | null) => {
+  const addFiles = React.useCallback((incoming: FileList | File[] | null) => {
     if (!incoming) return
     const pdfs = Array.from(incoming).filter(
       (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"),
@@ -55,6 +56,18 @@ function MergePage() {
       return { files: [...state.files, ...unique] }
     })
     useMergeStore.setState({ status: "idle", result: null, error: null })
+  }, [])
+
+  // Adopt files handed off from the landing page — only into an empty, idle
+  // page, and only take() when adopting so unclaimed files survive for a
+  // different tool choice.
+  React.useEffect(() => {
+    const state = useMergeStore.getState()
+    if (state.files.length > 0 || state.status !== "idle") return
+    const pending = useHandoffStore.getState().take()
+    if (pending.length > 0) addFiles(pending)
+    // Intentionally mount-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const removeFile = (index: number) => {
