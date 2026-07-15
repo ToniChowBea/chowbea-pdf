@@ -152,7 +152,7 @@ function PageThumb({
   selected: boolean
   disabled: boolean
   badge?: string
-  onPointerDown: () => void
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
   onPointerEnter: () => void
 }) {
   return (
@@ -411,8 +411,10 @@ function SplitPage() {
     useSplitStore.setState({ selection: range })
   }
 
-  const startPress = (index: number) => {
+  const startPress = (index: number, event: React.PointerEvent<HTMLDivElement>) => {
     if (!isSelectable(index)) return
+    // Release implicit pointer capture so pointerenter fires on other tiles during drag (touch).
+    event.currentTarget.releasePointerCapture(event.pointerId)
     pressingRef.current = true
     draggedRef.current = false
     dragStartRef.current = index
@@ -521,9 +523,15 @@ function SplitPage() {
       downloadBlob(result.blob, names[0]!)
       return
     }
-    const renamed = await renameZipEntries(result.blob, names)
-    const stem = file.name.replace(/\.pdf$/i, "") || "document"
-    downloadBlob(renamed, `${stem}-split.zip`)
+    try {
+      const renamed = await renameZipEntries(result.blob, names)
+      const stem = file.name.replace(/\.pdf$/i, "") || "document"
+      downloadBlob(renamed, `${stem}-split.zip`)
+    } catch (err) {
+      useSplitStore.setState({
+        error: err instanceof Error ? err.message : "Couldn't prepare download.",
+      })
+    }
   }
 
   const loading = status === "loading"
@@ -664,7 +672,7 @@ function SplitPage() {
                           selected={selection.includes(index)}
                           disabled={!isSelectable(index)}
                           badge={partIndex !== undefined ? `P${partIndex + 1}` : undefined}
-                          onPointerDown={() => startPress(index)}
+                          onPointerDown={(event) => startPress(index, event)}
                           onPointerEnter={() => enterPress(index)}
                         />
                       )
@@ -778,6 +786,12 @@ function SplitPage() {
             {(hasEmptyName || hasDuplicates) && (
               <p className="mt-4 text-[13px] font-bold text-destructive">
                 {hasEmptyName ? "File names can't be empty." : "File names must be unique."}
+              </p>
+            )}
+
+            {error && (
+              <p className="mt-4 rounded-[12px] border-2 border-destructive bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">
+                {error}
               </p>
             )}
 
