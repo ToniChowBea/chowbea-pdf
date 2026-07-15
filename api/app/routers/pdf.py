@@ -284,6 +284,36 @@ def _parse_page_ops(raw: str) -> list[dict[str, int]]:
     return ops
 
 
+def _parse_split_parts(raw: str) -> list[dict[str, list[int]]]:
+    """Parse and validate the split tool's parts list; 400 on anything off."""
+    invalid = HTTPException(status_code=400, detail="Invalid parts list.")
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, RecursionError):
+        raise invalid from None
+    if not isinstance(parsed, list) or not parsed:
+        raise invalid
+    parts: list[dict[str, list[int]]] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            raise invalid
+        pages = item.get("pages")
+        if not isinstance(pages, list) or not pages:
+            raise invalid
+        cleaned: list[int] = []
+        for page in pages:
+            if isinstance(page, bool) or not isinstance(page, int) or page < 0:
+                raise invalid
+            cleaned.append(page)
+        if len(cleaned) != len(set(cleaned)):
+            raise HTTPException(
+                status_code=400,
+                detail="A part lists the same page more than once.",
+            )
+        parts.append({"pages": cleaned})
+    return parts
+
+
 @router.post(
     "/rotate",
     status_code=202,
@@ -317,6 +347,45 @@ async def rotate(
         file_count=1,
         total_bytes=total_bytes,
         params={"name": _safe_name(file.filename, "document.pdf"), "pages": page_ops},
+    )
+
+
+@router.post(
+    "/split",
+    status_code=202,
+    summary="Queue a split of a PDF into page groups",
+    response_model=JobAccepted,
+)
+async def split(
+    request: Request,
+    file: UploadFile = File(..., description="The PDF to split."),
+    parts: str = Form(
+        ...,
+        description='JSON list of {"pages": [int, ...]}; each entry becomes one output PDF.',
+    ),
+) -> JobAccepted:
+    """Validate and store the upload, then queue a split job."""
+    parsed_parts = _parse_split_parts(parts)
+
+    work_dir = Path(tempfile.mkdtemp(prefix="chowbea-split-"))
+    try:
+        input_path = work_dir / "input.pdf"
+        await _stream_upload_to_disk(file, input_path)
+        total_bytes = input_path.stat().st_size
+    except Exception:
+        shutil.rmtree(work_dir, ignore_errors=True)
+        raise
+
+    return await _accept_job(
+        request,
+        tool="split",
+        workspace=work_dir,
+        file_count=1,
+        total_bytes=total_bytes,
+        params={
+            "name": _safe_name(file.filename, "document.pdf"),
+            "parts": parsed_parts,
+        },
     )
 
 

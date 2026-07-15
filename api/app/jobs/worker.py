@@ -11,6 +11,7 @@ import asyncio
 import logging
 import time
 import zipfile
+from pathlib import Path
 
 from app.jobs.registry import JobRecord, JobRegistry, JobStatus
 from app.jobs.stats import CounterStore
@@ -35,6 +36,7 @@ from app.services.unlock import (
 from app.services.merge import MergeError, merge_pdf_files
 from app.services.rotate import RotateError, rearrange_pdf_file
 from app.services.convert import ConvertError, convert_files
+from app.services.split import SplitError, split_pdf_file
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,7 @@ _KNOWN_ERRORS = (
     MergeError,
     RotateError,
     ConvertError,
+    SplitError,
 )
 
 
@@ -147,7 +150,32 @@ def _run_convert(record: JobRecord) -> None:
     record.media_type = media_type
 
 
-_RUNNERS = {"compress": _run_compress, "lock": _run_lock, "unlock": _run_unlock, "merge": _run_merge, "rotate": _run_rotate, "convert": _run_convert}
+def _run_split(record: JobRecord) -> None:
+    name: str = record.params["name"]
+    stem = Path(name).stem or "document"
+    parts = [entry["pages"] for entry in record.params["parts"]]
+    parts_dir = record.workspace / "parts"
+    paths = split_pdf_file(
+        record.workspace / "input.pdf",
+        name,
+        parts_dir,
+        parts,
+    )
+    labeled = [(path, f"{stem}-{index + 1}.pdf") for index, path in enumerate(paths)]
+    if len(labeled) == 1:
+        record.result_path, record.download_name = labeled[0]
+        record.media_type = "application/pdf"
+        return
+    archive_path = record.workspace / "split-pdfs.zip"
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path, arcname in labeled:
+            archive.write(path, arcname=arcname)
+    record.result_path = archive_path
+    record.download_name = "split-pdfs.zip"
+    record.media_type = "application/zip"
+
+
+_RUNNERS = {"compress": _run_compress, "lock": _run_lock, "unlock": _run_unlock, "merge": _run_merge, "rotate": _run_rotate, "convert": _run_convert, "split": _run_split}
 
 
 def run_job(record: JobRecord) -> None:

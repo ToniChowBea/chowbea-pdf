@@ -99,6 +99,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pdf/split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a split of a PDF into page groups
+         * @description Validate and store the upload, then queue a split job.
+         */
+        post: operations["split_pdf_split_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pdf/convert": {
         parameters: {
             query?: never;
@@ -300,6 +320,20 @@ export interface components {
              * @description JSON list of {"index", "rotation"}; array order is the new page order.
              */
             pages: string;
+        };
+        /** Body_split_pdf_split_post */
+        Body_split_pdf_split_post: {
+            /**
+             * File
+             * Format: binary
+             * @description The PDF to split.
+             */
+            file: string;
+            /**
+             * Parts
+             * @description JSON list of {"pages": [int, ...]}; each entry becomes one output PDF.
+             */
+            parts: string;
         };
         /** Body_unlock_pdf_unlock_post */
         Body_unlock_pdf_unlock_post: {
@@ -540,6 +574,39 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_rotate_pdf_rotate_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    split_pdf_split_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_split_pdf_split_post"];
             };
         };
         responses: {

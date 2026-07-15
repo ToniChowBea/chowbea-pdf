@@ -17,6 +17,7 @@ const TOOL_LABELS: Record<string, string> = {
   merge: "Merge",
   rotate: "Rotate",
   convert: "Convert",
+  split: "Split",
 }
 
 function BoardRow({

@@ -236,6 +236,40 @@ export async function rotatePdf(
   }
 }
 
+/** Result of a successful split request. */
+export interface SplitResult {
+  /** One PDF, or a ZIP of parts. */
+  blob: Blob
+  /** Suggested download filename from the response. */
+  filename: string
+}
+
+/**
+ * Split a PDF into page groups. `parts` is an array of 0-based page index lists.
+ *
+ * @throws Error with the API's error detail on failure.
+ */
+export async function splitPdf(
+  file: File,
+  parts: number[][],
+  onProgress?: (progress: CompressionProgress) => void,
+): Promise<SplitResult> {
+  const form = new FormData()
+  form.append("file", file)
+  form.append("parts", JSON.stringify(parts.map((pages) => ({ pages }))))
+  const download = await runJobFlow({
+    tool: "split",
+    submit: () => submitForm("/pdf/split", form, onProgress),
+    onProgress,
+  })
+  const stem = file.name.replace(/\.pdf$/i, "") || "document"
+  const fallback = parts.length === 1 ? `${stem}-1.pdf` : "split-pdfs.zip"
+  return {
+    blob: download.blob,
+    filename: download.filename ?? fallback,
+  }
+}
+
 /** Formats the convert tool can produce. */
 export const CONVERT_TARGETS = ["pdf", "docx", "md", "html", "txt", "png", "jpeg"] as const
 

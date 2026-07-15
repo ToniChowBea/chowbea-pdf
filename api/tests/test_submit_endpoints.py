@@ -138,6 +138,40 @@ def test_rotate_rejects_bad_page_payloads(client, pdf_bytes):
         assert response.json()["detail"] == expected_detail, raw
 
 
+def test_split_returns_202_with_parsed_parts(client, registry, fake_queue, pdf_bytes):
+    parts = [{"pages": [0, 1]}, {"pages": [2]}]
+    response = client.post(
+        "/pdf/split",
+        files={"file": ("doc.pdf", pdf_bytes, "application/pdf")},
+        data={"parts": json.dumps(parts)},
+    )
+    assert response.status_code == 202
+    record = registry.get(response.json()["job_id"])
+    assert record.tool == "split"
+    assert record.params["name"] == "doc.pdf"
+    assert record.params["parts"] == parts
+    assert (record.workspace / "input.pdf").exists()
+
+
+def test_split_rejects_bad_parts_payloads(client, pdf_bytes):
+    for raw, expected_detail in [
+        ("not json", "Invalid parts list."),
+        ("[]", "Invalid parts list."),
+        ('[{"pages": []}]', "Invalid parts list."),
+        ('[{"pages": [-1]}]', "Invalid parts list."),
+        ('[{"pages": [0, 0]}]', "A part lists the same page more than once."),
+        ('[{"pages": [0.5]}]', "Invalid parts list."),
+        ("[" * 20000 + "]" * 20000, "Invalid parts list."),
+    ]:
+        response = client.post(
+            "/pdf/split",
+            files={"file": ("doc.pdf", pdf_bytes, "application/pdf")},
+            data={"parts": raw},
+        )
+        assert response.status_code == 400, raw
+        assert response.json()["detail"] == expected_detail, raw
+
+
 from tests.test_convert_service import TINY_PNG
 
 

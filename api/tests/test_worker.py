@@ -1,6 +1,7 @@
 """Worker execution against the real (pikepdf-backed) lock/unlock services."""
 
 import asyncio
+import zipfile
 
 import pikepdf
 
@@ -8,9 +9,10 @@ from app.jobs.registry import JobRegistry, JobStatus
 from app.jobs.worker import execute_job
 
 
-def write_blank_pdf(path):
+def write_blank_pdf(path, pages=1):
     pdf = pikepdf.new()
-    pdf.add_blank_page()
+    for _ in range(pages):
+        pdf.add_blank_page()
     pdf.save(path)
     pdf.close()
 
@@ -199,3 +201,44 @@ def test_failed_job_does_not_increment_counter(tmp_path):
     asyncio.run(execute_job(registry, record.id, counter))
     assert record.status is JobStatus.failed
     assert counter.count == 0
+
+
+def test_split_job_single_part_returns_pdf(tmp_path):
+    registry = JobRegistry()
+    workspace = tmp_path / "job"
+    workspace.mkdir()
+    write_blank_pdf(workspace / "input.pdf", pages=2)
+    record = registry.create(
+        tool="split",
+        workspace=workspace,
+        file_count=1,
+        total_bytes=(workspace / "input.pdf").stat().st_size,
+        params={"name": "report.pdf", "parts": [{"pages": [0]}]},
+    )
+    asyncio.run(execute_job(registry, record.id))
+    assert record.status is JobStatus.done
+    assert record.error is None
+    assert record.result_path is not None and record.result_path.exists()
+    assert record.download_name == "report-1.pdf"
+    assert record.media_type == "application/pdf"
+
+
+def test_split_job_multi_part_returns_zip(tmp_path):
+    registry = JobRegistry()
+    workspace = tmp_path / "job"
+    workspace.mkdir()
+    write_blank_pdf(workspace / "input.pdf", pages=3)
+    record = registry.create(
+        tool="split",
+        workspace=workspace,
+        file_count=1,
+        total_bytes=(workspace / "input.pdf").stat().st_size,
+        params={"name": "report.pdf", "parts": [{"pages": [0]}, {"pages": [1, 2]}]},
+    )
+    asyncio.run(execute_job(registry, record.id))
+    assert record.status is JobStatus.done
+    assert record.download_name == "split-pdfs.zip"
+    assert record.media_type == "application/zip"
+    assert record.result_path is not None and record.result_path.exists()
+    with zipfile.ZipFile(record.result_path) as archive:
+        assert sorted(archive.namelist()) == ["report-1.pdf", "report-2.pdf"]

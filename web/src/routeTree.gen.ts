@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnlockRouteImport } from './routes/unlock'
+import { Route as SplitRouteImport } from './routes/split'
 import { Route as RotateRouteImport } from './routes/rotate'
 import { Route as QueueRouteImport } from './routes/queue'
 import { Route as MergeRouteImport } from './routes/merge'
@@ -21,6 +22,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const UnlockRoute = UnlockRouteImport.update({
   id: '/unlock',
   path: '/unlock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplitRoute = SplitRouteImport.update({
+  id: '/split',
+  path: '/split',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RotateRoute = RotateRouteImport.update({
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/merge': typeof MergeRoute
   '/queue': typeof QueueRoute
   '/rotate': typeof RotateRoute
+  '/split': typeof SplitRoute
   '/unlock': typeof UnlockRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/merge': typeof MergeRoute
   '/queue': typeof QueueRoute
   '/rotate': typeof RotateRoute
+  '/split': typeof SplitRoute
   '/unlock': typeof UnlockRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/merge': typeof MergeRoute
   '/queue': typeof QueueRoute
   '/rotate': typeof RotateRoute
+  '/split': typeof SplitRoute
   '/unlock': typeof UnlockRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/merge'
     | '/queue'
     | '/rotate'
+    | '/split'
     | '/unlock'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/merge'
     | '/queue'
     | '/rotate'
+    | '/split'
     | '/unlock'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/merge'
     | '/queue'
     | '/rotate'
+    | '/split'
     | '/unlock'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   MergeRoute: typeof MergeRoute
   QueueRoute: typeof QueueRoute
   RotateRoute: typeof RotateRoute
+  SplitRoute: typeof SplitRoute
   UnlockRoute: typeof UnlockRoute
 }
 
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/unlock'
       fullPath: '/unlock'
       preLoaderRoute: typeof UnlockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/split': {
+      id: '/split'
+      path: '/split'
+      fullPath: '/split'
+      preLoaderRoute: typeof SplitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rotate': {
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   MergeRoute: MergeRoute,
   QueueRoute: QueueRoute,
   RotateRoute: RotateRoute,
+  SplitRoute: SplitRoute,
   UnlockRoute: UnlockRoute,
 }
 export const routeTree = rootRouteImport

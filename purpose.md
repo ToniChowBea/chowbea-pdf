@@ -19,6 +19,7 @@ Implemented:
 
 - **Compress** — reduce PDF file size using Ghostscript, with selectable quality.
 - **Unlock** — remove a known password from a PDF using pikepdf.
+- **Split** — break a PDF into page groups (extract, consecutive parts, or every N pages) using pikepdf.
 
 Planned (future):
 

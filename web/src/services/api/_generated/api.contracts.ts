@@ -83,6 +83,16 @@ export interface Body_rotate_pdf_rotate_post {
 }
 
 /**
+ * Schema: Body_split_pdf_split_post
+ */
+export interface Body_split_pdf_split_post {
+	/** The PDF to split. */
+	file: File | Blob;
+	/** JSON list of {"pages": [int, ...]}; each entry becomes one output PDF. */
+	parts: string;
+}
+
+/**
  * Schema: Body_unlock_pdf_unlock_post
  */
 export interface Body_unlock_pdf_unlock_post {
@@ -277,6 +287,25 @@ export type Rotate_pdf_rotate_postResponse422 = {
 /** Response: POST /pdf/rotate (happy path) */
 export type Rotate_pdf_rotate_postResponse = Rotate_pdf_rotate_postResponse202;
 
+/** Response: POST /pdf/split (202 - Successful Response) */
+export type Split_pdf_split_postResponse202 = {
+	job_id: string;
+	position: number | null;
+	queue_size: number;
+};
+
+/** Response: POST /pdf/split (422 - Validation Error) */
+export type Split_pdf_split_postResponse422 = {
+	detail?: ({
+		loc: (string | number)[];
+		msg: string;
+		type: string;
+	})[];
+};
+
+/** Response: POST /pdf/split (happy path) */
+export type Split_pdf_split_postResponse = Split_pdf_split_postResponse202;
+
 /** Response: POST /pdf/convert (202 - Successful Response) */
 export type Convert_pdf_convert_postResponse202 = {
 	job_id: string;
@@ -413,6 +442,14 @@ export type Rotate_pdf_rotate_postBody = {
 	file: File | Blob;
 	 /** JSON list of {"index", "rotation"}; array order is the new page order. */
 	pages: string;
+};
+
+/** Request body: POST /pdf/split */
+export type Split_pdf_split_postBody = {
+	 /** The PDF to split. */
+	file: File | Blob;
+	 /** JSON list of {"pages": [int, ...]}; each entry becomes one output PDF. */
+	parts: string;
 };
 
 /** Request body: POST /pdf/convert */

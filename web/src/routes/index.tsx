@@ -42,7 +42,7 @@ const TOOLS: Tool[] = [
   { name: "Compress", description: "Shrink file size", icon: Minimize01Icon, to: "/compress" },
   { name: "OCR", description: "Make text searchable", icon: FileScanIcon },
   { name: "Merge", description: "Combine PDFs", icon: Layers01Icon, to: "/merge" },
-  { name: "Split", description: "Separate pages", icon: Files01Icon },
+  { name: "Split", description: "Separate pages", icon: Files01Icon, to: "/split" },
   { name: "Convert", description: "To & from Word, images", icon: ArrowDataTransferHorizontalIcon, to: "/convert" },
   { name: "Rotate", description: "Rotate & reorder pages", icon: RotateClockwiseIcon, to: "/rotate" },
 ]
