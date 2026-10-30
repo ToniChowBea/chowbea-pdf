@@ -18,12 +18,16 @@ pleasant to use through a modern web UI backed by a focused Python API.
 Implemented:
 
 - **Compress** — reduce PDF file size using Ghostscript, with selectable quality.
+- **Lock** — password-protect a PDF using pikepdf.
 - **Unlock** — remove a known password from a PDF using pikepdf.
+- **Merge** — combine two or more PDFs into one, in a chosen order.
 - **Split** — break a PDF into page groups (extract, consecutive parts, or every N pages) using pikepdf.
+- **Rotate** — rotate and reorder a PDF's pages.
+- **Convert** — convert between PDF, images, Word, Markdown, HTML and plain text.
 
 Planned (future):
 
-- Merge, split, watermark, OCR, protect (add password) and similar operations.
+- Watermark, OCR and similar operations.
 
 ## Principles
 

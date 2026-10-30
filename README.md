@@ -9,6 +9,12 @@ Upload a PDF, pick a tool, get your file back. No accounts, no clutter.
 - **Compress** — shrink one or more PDFs through Ghostscript presets (72–300 dpi)
 - **Lock** — password-protect a PDF (AES-128/256, printing/copying/editing permissions)
 - **Unlock** — remove a password you know
+- **Merge** — combine two or more PDFs into one, in the order you choose
+- **Split** — break a PDF into page groups (extract pages, consecutive parts,
+  or every N pages); multi-part results download as a ZIP
+- **Rotate** — rotate and reorder a PDF's pages
+- **Convert** — PDF to images (PNG/JPEG), Word, Markdown or text; Word,
+  Markdown, HTML, text or images to PDF (plus conversions between those text formats)
 
 Every job runs through a RabbitMQ-backed queue (three at a time, so heavy load
 never takes the service down) with a public **[/queue](https://pdf.chowbea.com/queue)**
