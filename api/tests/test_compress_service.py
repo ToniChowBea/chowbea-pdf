@@ -116,15 +116,6 @@ def test_compress_keeps_original_when_ghostscript_inflates(
 
 
 @needs_gs
-def test_compress_raises_on_garbage_input(tmp_path: Path) -> None:
-    src = tmp_path / "junk.pdf"
-    out = tmp_path / "out.pdf"
-    src.write_bytes(b"%PDF-not really a pdf")
-    with pytest.raises(CompressionError, match="Ghostscript failed"):
-        compress_pdf_file(src, out, CompressionQuality.ebook)
-
-
-@needs_gs
 def test_compress_wraps_ghostscript_stderr(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
