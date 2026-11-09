@@ -117,7 +117,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-3">
                 <JobsCounter />
                 <a
-                  href="https://github.com/oddFEELING/chowbea-pdf"
+                  href="https://github.com/ToniChowBea/chowbea-pdf"
                   target="_blank"
                   rel="noreferrer"
                   aria-label="View the source and contribute on GitHub"

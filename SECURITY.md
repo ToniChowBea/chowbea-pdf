@@ -9,7 +9,7 @@ are taken seriously.
 
 Report privately, either way works:
 
-- GitHub: use [private vulnerability reporting](https://github.com/oddFEELING/chowbea-pdf/security/advisories/new)
+- GitHub: use [private vulnerability reporting](https://github.com/ToniChowBea/chowbea-pdf/security/advisories/new)
 - Email: platforms@chowbea.com
 
 You'll get an acknowledgement within a few days. Please include reproduction
