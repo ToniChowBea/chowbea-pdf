@@ -13,7 +13,10 @@ Thanks for wanting to help! This is a small project with a simple flow.
 
 You need [bun](https://bun.sh) >= 1.3, [uv](https://docs.astral.sh/uv/),
 [Ghostscript](https://www.ghostscript.com/) (`gs`), and Docker (for the local
-RabbitMQ broker).
+RabbitMQ broker). The Convert tool and its tests also need
+[pandoc](https://pandoc.org/installing.html) 3.6+, LibreOffice Writer
+(`soffice`), and the Pango libraries weasyprint uses; see the
+[README](README.md#running-locally) for install commands.
 
 ```bash
 make install   # api (uv) + web (bun) dependencies
