@@ -52,6 +52,13 @@ Prerequisites:
   - macOS: `brew install ghostscript`
   - Debian/Ubuntu: `apt-get install ghostscript`
   - (Already installed inside the API Docker image.)
+- For the **Convert** tool (and its tests): [pandoc](https://pandoc.org/installing.html)
+  3.6+ (the official release build, since conversions run with `--sandbox`),
+  LibreOffice Writer (`soffice`), and the Pango libraries weasyprint needs
+  - macOS: `brew install pandoc pango` and `brew install --cask libreoffice`
+  - Debian/Ubuntu: `apt-get install libreoffice-writer libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 fonts-liberation`,
+    plus pandoc from its [releases page](https://github.com/jgm/pandoc/releases)
+  - (All of these are already installed inside the API Docker image and in CI.)
 - Docker (for the local RabbitMQ broker)
 
 From the repo root:
