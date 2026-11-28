@@ -242,3 +242,36 @@ def test_split_job_multi_part_returns_zip(tmp_path):
     assert record.result_path is not None and record.result_path.exists()
     with zipfile.ZipFile(record.result_path) as archive:
         assert sorted(archive.namelist()) == ["report-1.pdf", "report-2.pdf"]
+
+
+def test_compress_zip_keeps_same_named_uploads_apart(tmp_path, monkeypatch):
+    """Two uploads both called scan.pdf must both survive in the result ZIP."""
+    import shutil
+
+    from app.jobs import worker
+    from app.services.compress import CompressionStats
+
+    def fake_compress(input_path, output_path, quality):  # noqa: ANN001 - Ghostscript-free stand-in
+        shutil.copyfile(input_path, output_path)
+        size = output_path.stat().st_size
+        return CompressionStats(original_size=size, compressed_size=size)
+
+    monkeypatch.setattr(worker, "compress_pdf_file", fake_compress)
+
+    registry = JobRegistry()
+    workspace = tmp_path / "job"
+    workspace.mkdir()
+    for index, pages in enumerate((1, 2, 3)):
+        write_blank_pdf(workspace / f"input-{index}.pdf", pages=pages)
+    record = registry.create(
+        tool="compress",
+        workspace=workspace,
+        file_count=3,
+        total_bytes=0,
+        params={"quality": "ebook", "names": ["scan.pdf", "Scan.pdf", "scan.pdf"]},
+    )
+    asyncio.run(execute_job(registry, record.id))
+    assert record.status is JobStatus.done, record.error
+    assert record.media_type == "application/zip"
+    with zipfile.ZipFile(record.result_path) as archive:
+        assert archive.namelist() == ["scan.pdf", "Scan-2.pdf", "scan-3.pdf"]

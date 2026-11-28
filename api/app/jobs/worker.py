@@ -57,6 +57,27 @@ _KNOWN_ERRORS = (
 )
 
 
+def _unique_arcnames(names: list[str]) -> list[str]:
+    """Make ZIP entry names unique so same-named uploads don't overwrite each other.
+
+    Two uploads called `scan.pdf` would otherwise become two ZIP entries with the
+    same name, and unzipping keeps only one of them. Later duplicates get a
+    numbered suffix: `scan.pdf`, `scan-2.pdf`, `scan-3.pdf`.
+    """
+    taken: set[str] = set()
+    unique: list[str] = []
+    for name in names:
+        candidate = name
+        stem, suffix = Path(name).stem, Path(name).suffix
+        counter = 2
+        while candidate.lower() in taken:
+            candidate = f"{stem}-{counter}{suffix}"
+            counter += 1
+        taken.add(candidate.lower())
+        unique.append(candidate)
+    return unique
+
+
 def _run_compress(record: JobRecord) -> None:
     names: list[str] = record.params["names"]
     quality = CompressionQuality(record.params["quality"])
@@ -81,9 +102,10 @@ def _run_compress(record: JobRecord) -> None:
         return
 
     archive_path = record.workspace / "compressed-pdfs.zip"
+    arcnames = _unique_arcnames([name for _, name in outputs])
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        for output_path, name in outputs:
-            archive.write(output_path, arcname=name)
+        for (output_path, _), arcname in zip(outputs, arcnames):
+            archive.write(output_path, arcname=arcname)
     record.result_path = archive_path
     record.download_name = "compressed-pdfs.zip"
     record.media_type = "application/zip"
